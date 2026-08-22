@@ -247,7 +247,7 @@ final class InputSession {
             CandidatePanel.shared.hide()
             return
         }
-        candidates = Decoder.decode(keys: keys, scheme: scheme)
+        candidates = InputDecoder.decode(keys: keys, scheme: scheme)
         if page * pageSize >= max(candidates.count, 1) {
             page = 0
         }

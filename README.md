@@ -30,7 +30,7 @@ chmod +x scripts/install.sh
 ./scripts/install.sh
 ```
 
-脚本会调用 `xcodebuild`，再把 `Ciji.app` 拷到 `~/Library/Input Methods/`。
+`scripts/install.sh` 优先用 `xcodebuild`。若只有 Command Line Tools、没有完整 Xcode.app（`xcodebuild` 提示 requires Xcode），会自动改走 `scripts/build_clt.sh`（`swiftc` 打成 `Ciji.app` 并安装）。
 
 手动构建：
 
@@ -38,8 +38,12 @@ chmod +x scripts/install.sh
 # 若尚未生成词库（仓库已带预处理结果，一般不用）
 python3 scripts/build_dict.py
 
+# 完整 Xcode
 xcodebuild -project Ciji.xcodeproj -scheme Ciji -configuration Release \
   CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual build
+
+# 仅 Command Line Tools
+./scripts/build_clt.sh
 ```
 
 ## 启用输入法

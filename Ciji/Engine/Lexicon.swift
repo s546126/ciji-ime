@@ -29,12 +29,15 @@ enum GzipInflate {
             var buffer = [UInt8](repeating: 0, count: chunk)
             var inflateStatus = Z_OK
             repeat {
-                stream.next_out = UnsafeMutablePointer(&buffer)
-                stream.avail_out = uInt(buffer.count)
-                inflateStatus = inflate(&stream, Z_NO_FLUSH)
-                let produced = buffer.count - Int(stream.avail_out)
+                let produced = buffer.withUnsafeMutableBufferPointer { dest -> Int in
+                    guard let outBase = dest.baseAddress else { return 0 }
+                    stream.next_out = outBase
+                    stream.avail_out = uInt(dest.count)
+                    inflateStatus = inflate(&stream, Z_NO_FLUSH)
+                    return dest.count - Int(stream.avail_out)
+                }
                 if produced > 0 {
-                    output.append(buffer, count: produced)
+                    output.append(contentsOf: buffer.prefix(produced))
                 }
             } while inflateStatus == Z_OK
             return inflateStatus == Z_STREAM_END ? output : nil

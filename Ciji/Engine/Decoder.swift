@@ -9,7 +9,7 @@ struct Candidate: Equatable {
     var source: String
 }
 
-enum Decoder {
+enum InputDecoder {
     static func decode(keys: String, scheme: Scheme, lexicon: Lexicon = .shared) -> [Candidate] {
         let lowered = keys.lowercased()
         guard !lowered.isEmpty else { return [] }
