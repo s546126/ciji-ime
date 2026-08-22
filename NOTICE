@@ -1,0 +1,7 @@
+词记 bundles a preprocessed lexicon derived from CC-CEDICT.
+
+CC-CEDICT is licensed under Creative Commons Attribution-Share Alike 3.0.
+Source: https://www.mdbg.net/chinese/dictionary?page=cc-cedict
+
+Please retain this attribution in distributions that include the lexicon file
+`Ciji/Resources/cedict.tsv.gz`.
