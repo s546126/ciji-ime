@@ -7,6 +7,16 @@ final class SessionStore {
     private let fallback = InputSession()
     weak var active: InputSession?
 
+    /// Menu and other UI must not wait for IMK `activateServer`.
+    /// Until a client session exists, pin and return the process-wide fallback.
+    func current() -> InputSession {
+        if let active {
+            return active
+        }
+        active = fallback
+        return fallback
+    }
+
     func session(for client: Any?) -> InputSession {
         guard let object = client as AnyObject? else { return fallback }
         if let existing = table.object(forKey: object) {

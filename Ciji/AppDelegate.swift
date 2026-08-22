@@ -21,8 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func rebuildMenu() {
         statusItem?.menu = makeMenu()
-        let session = SessionStore.shared.active
-        if session?.isASCII == true {
+        let session = SessionStore.shared.current()
+        if session.isASCII {
             statusItem?.button?.title = "A"
         } else {
             statusItem?.button?.title = "词"
@@ -30,8 +30,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func makeMenu() -> NSMenu {
-        let session = SessionStore.shared.active
-        let scheme = session?.currentScheme ?? AppConfig.load().preferredScheme
+        let session = SessionStore.shared.current()
+        let scheme = session.currentScheme
         let menu = NSMenu(title: "词记")
         menu.autoenablesItems = false
         let xiaohe = NSMenuItem(title: "小鹤双拼", action: #selector(selectXiaohe(_:)), keyEquivalent: "p")
@@ -40,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let quanpin = NSMenuItem(title: "全拼", action: #selector(selectQuanpin(_:)), keyEquivalent: "")
         quanpin.state = scheme == .quanpin ? .on : .off
         let ascii = NSMenuItem(title: "英文 ASCII（Caps Lock）", action: #selector(toggleASCII(_:)), keyEquivalent: "")
-        ascii.state = session?.isASCII == true ? .on : .off
+        ascii.state = session.isASCII ? .on : .off
         let config = NSMenuItem(title: "打开配置文件夹", action: #selector(openConfig(_:)), keyEquivalent: ",")
         let about = NSMenuItem(title: "关于词记", action: #selector(showAbout(_:)), keyEquivalent: "")
         for item in [xiaohe, quanpin, ascii, config, about] {
@@ -58,17 +58,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func selectXiaohe(_ sender: Any?) {
-        SessionStore.shared.active?.setScheme(.xiaohe, client: nil)
+        SessionStore.shared.current().setScheme(.xiaohe, client: nil)
         NotificationCenter.default.post(name: .cijiStateChanged, object: nil)
     }
 
     @objc func selectQuanpin(_ sender: Any?) {
-        SessionStore.shared.active?.setScheme(.quanpin, client: nil)
+        SessionStore.shared.current().setScheme(.quanpin, client: nil)
         NotificationCenter.default.post(name: .cijiStateChanged, object: nil)
     }
 
     @objc func toggleASCII(_ sender: Any?) {
-        SessionStore.shared.active?.toggleASCII(client: nil)
+        SessionStore.shared.current().toggleASCII(client: nil)
         NotificationCenter.default.post(name: .cijiStateChanged, object: nil)
     }
 
