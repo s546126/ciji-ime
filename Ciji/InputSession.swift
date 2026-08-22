@@ -169,6 +169,7 @@ final class InputSession {
 
     func menu() -> NSMenu {
         let menu = NSMenu(title: "词记")
+        menu.autoenablesItems = false
         let target = NSApp.delegate
         let xiaohe = NSMenuItem(title: "小鹤双拼", action: #selector(AppDelegate.selectXiaohe(_:)), keyEquivalent: "")
         xiaohe.state = scheme == .xiaohe ? .on : .off

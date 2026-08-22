@@ -1,8 +1,11 @@
 import Cocoa
 import InputMethodKit
 
-/// IMKServer must outlive `NSApp.run()`.
+/// IMKServer and AppDelegate must outlive `NSApp.run()`.
+/// NSApplication.delegate is weak; without a strong keep-alive the status
+/// menu target disappears and clicks do nothing.
 private var imkServer: IMKServer?
+private var appDelegate: AppDelegate?
 
 private func start() {
     let identifier = Bundle.main.bundleIdentifier ?? "com.shengtao.ciji.inputmethod"
@@ -12,6 +15,7 @@ private func start() {
     let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
     let delegate = AppDelegate()
+    appDelegate = delegate
     app.delegate = delegate
     app.run()
 }

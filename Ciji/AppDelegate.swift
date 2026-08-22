@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let session = SessionStore.shared.active
         let scheme = session?.currentScheme ?? AppConfig.load().preferredScheme
         let menu = NSMenu(title: "词记")
+        menu.autoenablesItems = false
         let xiaohe = NSMenuItem(title: "小鹤双拼", action: #selector(selectXiaohe(_:)), keyEquivalent: "p")
         xiaohe.keyEquivalentModifierMask = [.control, .shift]
         xiaohe.state = scheme == .xiaohe ? .on : .off
@@ -40,13 +41,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quanpin.state = scheme == .quanpin ? .on : .off
         let ascii = NSMenuItem(title: "英文 ASCII（Caps Lock）", action: #selector(toggleASCII(_:)), keyEquivalent: "")
         ascii.state = session?.isASCII == true ? .on : .off
+        let config = NSMenuItem(title: "打开配置文件夹", action: #selector(openConfig(_:)), keyEquivalent: ",")
+        let about = NSMenuItem(title: "关于词记", action: #selector(showAbout(_:)), keyEquivalent: "")
+        for item in [xiaohe, quanpin, ascii, config, about] {
+            item.target = self
+            item.isEnabled = true
+        }
         menu.addItem(xiaohe)
         menu.addItem(quanpin)
         menu.addItem(ascii)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "打开配置文件夹", action: #selector(openConfig(_:)), keyEquivalent: ",")
+        menu.addItem(config)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "关于词记", action: #selector(showAbout(_:)), keyEquivalent: "")
+        menu.addItem(about)
         return menu
     }
 
@@ -71,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showAbout(_ sender: Any?) {
+        NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "词记"
         alert.informativeText = "macOS 中文输入法。默认小鹤双拼，候选栏显示英文释义。\n配置：~/Library/Application Support/Ciji/config.json\nCtrl+Shift+P 切换小鹤/全拼。"
