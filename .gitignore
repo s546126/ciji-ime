@@ -1,0 +1,10 @@
+.DS_Store
+xcuserdata/
+DerivedData/
+build/
+__pycache__/
+*.pyc
+.venv/
+scripts/.cedict_cache/
+*.swp
+.idea/

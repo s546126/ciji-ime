@@ -1,0 +1,343 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00000000000000000000101 /* Ciji/main.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000100 /* Ciji/main.swift */; };
+		A00000000000000000000103 /* Ciji/AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000102 /* Ciji/AppDelegate.swift */; };
+		A00000000000000000000105 /* Ciji/CijiInputController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000104 /* Ciji/CijiInputController.swift */; };
+		A00000000000000000000107 /* Ciji/InputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000106 /* Ciji/InputSession.swift */; };
+		A00000000000000000000109 /* Ciji/CandidatePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000108 /* Ciji/CandidatePanel.swift */; };
+		A0000000000000000000010B /* Ciji/Engine/Pinyin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000010A /* Ciji/Engine/Pinyin.swift */; };
+		A0000000000000000000010D /* Ciji/Engine/Xiaohe.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000010C /* Ciji/Engine/Xiaohe.swift */; };
+		A0000000000000000000010F /* Ciji/Engine/Lexicon.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000010E /* Ciji/Engine/Lexicon.swift */; };
+		A00000000000000000000111 /* Ciji/Engine/Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000110 /* Ciji/Engine/Decoder.swift */; };
+		A00000000000000000000113 /* Ciji/Translation/AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000112 /* Ciji/Translation/AppConfig.swift */; };
+		A00000000000000000000115 /* Ciji/Translation/GlossService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000114 /* Ciji/Translation/GlossService.swift */; };
+		A00000000000000000000117 /* Ciji/Resources/cedict.tsv.gz in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000116 /* Ciji/Resources/cedict.tsv.gz */; };
+		A00000000000000000000119 /* Ciji/Resources/config.sample.json in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000118 /* Ciji/Resources/config.sample.json */; };
+		A0000000000000000000011B /* Ciji/Resources/ciji.icns in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011A /* Ciji/Resources/ciji.icns */; };
+		A0000000000000000000011D /* Ciji/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011C /* Ciji/Assets.xcassets */; };
+		A0000000000000000000011F /* Ciji/zh-Hans.lproj/InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011E /* Ciji/zh-Hans.lproj/InfoPlist.strings */; };
+		A00000000000000000000121 /* Ciji/en.lproj/InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000120 /* Ciji/en.lproj/InfoPlist.strings */; };
+		A00000000000000000000043 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000040 /* Cocoa.framework */; };
+		A00000000000000000000044 /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000041 /* InputMethodKit.framework */; };
+		A00000000000000000000045 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000042 /* libz.tbd */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A00000000000000000000030 /* Ciji.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ciji.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000031 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A00000000000000000000032 /* Ciji.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ciji.entitlements; sourceTree = "<group>"; };
+		A00000000000000000000040 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		A00000000000000000000041 /* InputMethodKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = InputMethodKit.framework; path = System/Library/Frameworks/InputMethodKit.framework; sourceTree = SDKROOT; };
+		A00000000000000000000042 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
+		A00000000000000000000100 /* Ciji/main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		A00000000000000000000102 /* Ciji/AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A00000000000000000000104 /* Ciji/CijiInputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CijiInputController.swift; sourceTree = "<group>"; };
+		A00000000000000000000106 /* Ciji/InputSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSession.swift; sourceTree = "<group>"; };
+		A00000000000000000000108 /* Ciji/CandidatePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidatePanel.swift; sourceTree = "<group>"; };
+		A0000000000000000000010A /* Ciji/Engine/Pinyin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pinyin.swift; sourceTree = "<group>"; };
+		A0000000000000000000010C /* Ciji/Engine/Xiaohe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Xiaohe.swift; sourceTree = "<group>"; };
+		A0000000000000000000010E /* Ciji/Engine/Lexicon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lexicon.swift; sourceTree = "<group>"; };
+		A00000000000000000000110 /* Ciji/Engine/Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Decoder.swift; sourceTree = "<group>"; };
+		A00000000000000000000112 /* Ciji/Translation/AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		A00000000000000000000114 /* Ciji/Translation/GlossService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlossService.swift; sourceTree = "<group>"; };
+		A00000000000000000000116 /* Ciji/Resources/cedict.tsv.gz */ = {isa = PBXFileReference; lastKnownFileType = archive.gzip; path = cedict.tsv.gz; sourceTree = "<group>"; };
+		A00000000000000000000118 /* Ciji/Resources/config.sample.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = config.sample.json; sourceTree = "<group>"; };
+		A0000000000000000000011A /* Ciji/Resources/ciji.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = ciji.icns; sourceTree = "<group>"; };
+		A0000000000000000000011C /* Ciji/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A0000000000000000000011E /* Ciji/zh-Hans.lproj/InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
+		A00000000000000000000120 /* Ciji/en.lproj/InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00000000000000000000012 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000043 /* Cocoa.framework in Frameworks */,
+				A00000000000000000000044 /* InputMethodKit.framework in Frameworks */,
+				A00000000000000000000045 /* libz.tbd in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000004 /* Ciji */,
+				A00000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000030 /* Ciji.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000004 /* Ciji */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000100 /* main.swift */,
+				A00000000000000000000102 /* AppDelegate.swift */,
+				A00000000000000000000104 /* CijiInputController.swift */,
+				A00000000000000000000106 /* InputSession.swift */,
+				A00000000000000000000108 /* CandidatePanel.swift */,
+				A00000000000000000000005 /* Engine */,
+				A00000000000000000000006 /* Translation */,
+				A00000000000000000000007 /* Resources */,
+				A00000000000000000000008 /* zh-Hans.lproj */,
+				A00000000000000000000009 /* en.lproj */,
+				A0000000000000000000011C /* Assets.xcassets */,
+				A00000000000000000000031 /* Info.plist */,
+				A00000000000000000000032 /* Ciji.entitlements */,
+			);
+			path = Ciji;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000005 /* Engine */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000010A /* Pinyin.swift */,
+				A0000000000000000000010C /* Xiaohe.swift */,
+				A0000000000000000000010E /* Lexicon.swift */,
+				A00000000000000000000110 /* Decoder.swift */,
+			);
+			path = Engine;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000006 /* Translation */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000112 /* AppConfig.swift */,
+				A00000000000000000000114 /* GlossService.swift */,
+			);
+			path = Translation;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000007 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000116 /* cedict.tsv.gz */,
+				A00000000000000000000118 /* config.sample.json */,
+				A0000000000000000000011A /* ciji.icns */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000008 /* zh-Hans.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000011E /* InfoPlist.strings */,
+			);
+			path = "zh-Hans.lproj";
+			sourceTree = "<group>";
+		};
+		A00000000000000000000009 /* en.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000120 /* InfoPlist.strings */,
+			);
+			path = en.lproj;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00000000000000000000010 /* Ciji */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000021 /* Build configuration list for PBXNativeTarget "Ciji" */;
+			buildPhases = (
+				A00000000000000000000011 /* Sources */,
+				A00000000000000000000012 /* Frameworks */,
+				A00000000000000000000013 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Ciji;
+			productName = Ciji;
+			productReference = A00000000000000000000030 /* Ciji.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = A00000000000000000000020 /* Build configuration list for PBXProject "Ciji" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				"zh-Hans",
+			);
+			mainGroup = A00000000000000000000002;
+			productRefGroup = A00000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00000000000000000000010 /* Ciji */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00000000000000000000013 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000117 /* Ciji/Resources/cedict.tsv.gz in Resources */,
+				A00000000000000000000119 /* Ciji/Resources/config.sample.json in Resources */,
+				A0000000000000000000011B /* Ciji/Resources/ciji.icns in Resources */,
+				A0000000000000000000011D /* Ciji/Assets.xcassets in Resources */,
+				A0000000000000000000011F /* Ciji/zh-Hans.lproj/InfoPlist.strings in Resources */,
+				A00000000000000000000121 /* Ciji/en.lproj/InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00000000000000000000011 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000101 /* Ciji/main.swift in Sources */,
+				A00000000000000000000103 /* Ciji/AppDelegate.swift in Sources */,
+				A00000000000000000000105 /* Ciji/CijiInputController.swift in Sources */,
+				A00000000000000000000107 /* Ciji/InputSession.swift in Sources */,
+				A00000000000000000000109 /* Ciji/CandidatePanel.swift in Sources */,
+				A0000000000000000000010B /* Ciji/Engine/Pinyin.swift in Sources */,
+				A0000000000000000000010D /* Ciji/Engine/Xiaohe.swift in Sources */,
+				A0000000000000000000010F /* Ciji/Engine/Lexicon.swift in Sources */,
+				A00000000000000000000111 /* Ciji/Engine/Decoder.swift in Sources */,
+				A00000000000000000000113 /* Ciji/Translation/AppConfig.swift in Sources */,
+				A00000000000000000000115 /* Ciji/Translation/GlossService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00000000000000000000022 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A00000000000000000000023 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A00000000000000000000024 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Ciji/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				OTHER_LDFLAGS = "$(inherited) -lz";
+				PRODUCT_BUNDLE_IDENTIFIER = com.shengtao.ciji.inputmethod;
+				PRODUCT_NAME = Ciji;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A00000000000000000000025 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Ciji/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				OTHER_LDFLAGS = "$(inherited) -lz";
+				PRODUCT_BUNDLE_IDENTIFIER = com.shengtao.ciji.inputmethod;
+				PRODUCT_NAME = Ciji;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00000000000000000000020 /* Build configuration list for PBXProject "Ciji" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000022 /* Debug */,
+				A00000000000000000000023 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A00000000000000000000021 /* Build configuration list for PBXNativeTarget "Ciji" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000024 /* Debug */,
+				A00000000000000000000025 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A00000000000000000000001 /* Project object */;
+}
