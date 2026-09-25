@@ -23,11 +23,16 @@ macOS 原生中文输入法：默认 **小鹤双拼**，也可切到全拼。候
 - 小鹤双拼（默认）/ 全拼，`Ctrl+Shift+P` 或输入法菜单切换
 - 竖排候选窗：「序号 + 中文 + 英文释义」，边打字边背单词
 - 整句组词：`woshizhongguoren` → 我是中国人；`jintiantianqizhenhao` → 今天天气真好
-- 真实词频排序（rime-essay 语料 + 多音字读音权重）：`de` → 的，`di` 不会再出「的」
-- 末音节可不打完：小鹤 `wodemkz`、全拼 `zhonggu` 已能出 我的名字 / 中国
-- 越用越顺手：记住你选过的词、你组过的句子，以及「上一个词 → 下一个词」的搭配（本地保存，不上传）
+- 真实词频排序（rime-essay 语料 + 多音字读音权重）；末音节可不打完（`zhonggu` → 中国）
+- **英文反查**：直接打 `hello` / `why` / `translate` → 你好 / 为什么 / 翻译
+- **Jev 智能重排**（可选）：参考光标前的上文，自动把最通顺的候选排到第一并标 ✦（汽车 + `youxiang` → 油箱；我现在 + `youxiang` → 又想）
+- **生词本 + 复习**：`Ctrl+S` 收藏；按 1/2/4/7/15/30… 天间隔复习，到期的词在候选里标「复习」，底栏提醒；打出来即算复习一次
+- **Relingo 打通**：同步你的 Relingo 生词本（候选英文命中标「R」），`Ctrl+S` 同时推送到 Relingo；也可导入/导出单词表
+- **朗读**：`Ctrl+R` 用系统语音读英文；**整句翻译**：`Ctrl+T` 看英文，再按一次直接上屏英文
+- 越用越顺手：记住你选过的词、组过的句子，以及「上一个词 → 下一个词」的搭配（本地保存）
 - 本地词库约 20 万词（CC-CEDICT + 语料高频词）；带「≈」的是由词素拼出的近似释义
-- 可选 CLIProxyAPI / OpenAI 兼容接口给当前页候选补充更地道的释义，失败不影响打字
+
+候选标记：✦ Jev 推荐 · ★ 生词本 · 复习 今天该复习 · R 你的 Relingo 生词
 
 ## 按键
 
@@ -43,6 +48,10 @@ macOS 原生中文输入法：默认 **小鹤双拼**，也可切到全拼。候
 | Esc | 取消 |
 | 退格 | 删一个按键 |
 | `'`（全拼） | 音节分隔：`xi'an` → 西安 |
+| `Ctrl+S` | 当前高亮词加入 / 移出生词本（并推送 Relingo） |
+| `Ctrl+R` | 朗读英文 |
+| `Ctrl+T` | 整句翻译；再按一次上屏英文 |
+| `` Ctrl+` `` | 立即请求 Jev 重排 |
 | 标点 | 自动上屏首选后输出中文标点 |
 
 小鹤零声母：单字母韵母双击（`a`→`aa`），双字母保持全拼（`en`→`en`），三字母为首字母 + 韵母键（`ang`→`ah`）。
@@ -67,7 +76,37 @@ build/Ciji.app/Contents/MacOS/Ciji --selftest   # 无界面自检 Swift 引擎
 
 GitHub Actions（`.github/workflows/build.yml`）每次 push 都会：跑 Python 引擎测试 → 在 macOS 上编译 Universal app → 跑 `--selftest` → 打 DMG 并上传为构建产物。推送 `v*` 标签（如 `git tag v1.0.0 && git push --tags`）会自动发布 Release 并附上 DMG。
 
+## Jev 智能重排
+
+参考 [jev-rime-rerank](https://github.com/icf1re/jev-rime-rerank) 的思路：把光标前的上文 + 前 6 个候选发给 TypeSafe 的 System One 决策模型 [Jev](https://openrouter.ai/typesafe/jev-1.13)，按概率重排。不同的是词记是**自动**的：停顿 150ms 后在后台请求，打字不卡，结果回来就刷新候选；失败/超时就保持本地顺序。上文优先读取当前 App 光标前的文字（读不到就用本次输入的内容）。
+
+在 `~/Library/Application Support/Ciji/config.json` 里：
+
+```json
+"jev": {
+  "enabled": true,
+  "provider": "openrouter",      // 或 "gateway"
+  "apiKey": "sk-or-…",           // OpenRouter Key；gateway 模式填网关的 Key
+  "url": "",                     // gateway 模式填 …/jev/decide 或 …/laya/decide
+  "model": "typesafe/jev-1.13",
+  "candidates": 6, "debounceMs": 150, "timeoutMs": 1500
+}
+```
+
+OpenRouter 模式请求 `POST https://openrouter.ai/api/alpha/decisions`。如果 AI 释义本身就配的 OpenRouter（`proxyBaseURL` 含 openrouter.ai），`jev.apiKey` 可留空复用。菜单里能开关 Jev、看最近一次调用状态。注意：开启后，光标前约 40 个字的上文和候选词会发给所配置的服务。
+
+## 生词本与 Relingo
+
+- 生词本保存在 `~/Library/Application Support/Ciji/vocab.json`；菜单「生词本…」导出 `生词本.csv`（中文、拼音、English、下次复习；可直接导入 Anki）。
+- **Relingo 同步**：在 config.json 填 `"relingo": {"token": "…"}`。token 获取：浏览器打开任意网页让 Relingo 插件工作 → 开发者工具 Network → 任一 `api.relingo.net` 请求头里的 `x-relingo-token`。之后：
+  - 词记会拉取你 Relingo 生词本里的英文单词，候选英文命中时标「R」；
+  - `Ctrl+S` 收藏时把英文词（如 翻译 → translate）合并进 Relingo 生词本（先读再合并，不会覆盖）；默认推到第一个非「已掌握」的生词本，可用 `relingo.vocabularyId` 指定（菜单「Relingo：立即同步」会显示各生词本的 id）。
+  - Relingo 没有公开 API，这里用的是插件同款接口（参考开源的 [relingo-desktop](https://github.com/bonaysoft/relingo-desktop)），接口变动时可能失效。
+- **不填 token 也能打通**：菜单「Relingo：导出英文单词表」生成 `relingo-import.txt`（一行一个词）供 Relingo / 其他背词软件导入；「Relingo：导入单词表」读取 Relingo 导出的 txt/csv（取第一列英文）。
+
 ## 英文释义与 CLIProxyAPI
+
+（`Ctrl+T` 整句翻译也走这个接口；任何 OpenAI 兼容地址都行，比如 OpenRouter：`"proxyBaseURL": "https://openrouter.ai/api/v1"`。没配置时 `Ctrl+T` 显示逐词近似释义。）
 
 打字从不阻塞在网络上。没有代理时，候选右侧用 CEDICT 英文；配置了代理后，可见的一页会批量请求短释义，失败则继续用 CEDICT。
 
