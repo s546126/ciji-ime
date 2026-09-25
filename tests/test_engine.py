@@ -151,7 +151,49 @@ class RankingTests(unittest.TestCase):
 
     def test_wo_includes_i(self) -> None:
         phrases = [c.phrase for c in decode_xiaohe(self.lex, "wo")]
-        self.assertIn("我", phrases)
+        self.assertEqual(phrases[0], "我")
+
+    def test_common_single_chars_first(self) -> None:
+        for keys, want in (("de", "的"), ("ni", "你"), ("shi", "是"), ("zai", "在"), ("le", "了")):
+            self.assertEqual(decode_quanpin(self.lex, keys)[0].phrase, want, keys)
+        # 的 is almost never read di: it must not lead "di".
+        self.assertNotEqual(decode_quanpin(self.lex, "di")[0].phrase, "的")
+
+    def test_sentences(self) -> None:
+        cases = {
+            "woshizhongguoren": "我是中国人",
+            "jintiantianqizhenhao": "今天天气真好",
+            "nihao": "你好",
+            "women": "我们",
+            "shurufa": "输入法",
+        }
+        for keys, want in cases.items():
+            self.assertEqual(decode_quanpin(self.lex, keys)[0].phrase, want, keys)
+        self.assertEqual(decode_xiaohe(self.lex, "uurufa")[0].phrase, "输入法")
+        self.assertEqual(decode_xiaohe(self.lex, "nihc")[0].phrase, "你好")
+
+    def test_partial_last_syllable(self) -> None:
+        self.assertEqual(decode_xiaohe(self.lex, "wodemkz")[0].phrase, "我的名字")
+        self.assertEqual(decode_quanpin(self.lex, "zhonggu")[0].phrase, "中国")
+        self.assertEqual(decode_xiaohe(self.lex, "w")[0].phrase, "我")
+
+    def test_apostrophe_forces_split(self) -> None:
+        phrases = [c.phrase for c in decode_quanpin(self.lex, "xi'an")]
+        self.assertEqual(phrases[0], "西安")
+        self.assertNotIn("先", phrases[:3])
+
+    def test_partial_candidates_consume_prefix(self) -> None:
+        cands = decode_quanpin(self.lex, "nihao")
+        ni = next(c for c in cands if c.phrase == "你")
+        self.assertEqual(ni.consumed, 2)
+        cands = decode_quanpin(self.lex, "ni'hao")
+        ni = next(c for c in cands if c.phrase == "你")
+        self.assertEqual(ni.consumed, 2)
+
+    def test_every_candidate_has_english(self) -> None:
+        for keys in ("nihao", "woshizhongguoren", "shurufa"):
+            top = decode_quanpin(self.lex, keys)[0]
+            self.assertTrue(top.gloss, keys)
 
 
 class URLJoinTests(unittest.TestCase):

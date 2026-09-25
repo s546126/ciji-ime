@@ -1,0 +1,75 @@
+name: Build DMG
+
+on:
+  push:
+    branches: [main, "claude/**", "cursor/**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Engine tests (Python reference)
+        run: python -m unittest tests.test_engine -v
+
+  build-dmg:
+    needs: test-engine
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="1.0.0-${GITHUB_RUN_NUMBER}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcrun swiftc --version
+
+      - name: Build universal Ciji.app
+        env:
+          ARCHS: "arm64 x86_64"
+          VERSION: ${{ steps.ver.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: scripts/build_app.sh
+
+      - name: Swift engine self-test
+        run: build/Ciji.app/Contents/MacOS/Ciji --selftest
+
+      - name: Package DMG
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: scripts/make_dmg.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ciji-${{ steps.ver.outputs.version }}
+          path: |
+            build/Ciji-*.dmg
+            build/Ciji-*.dmg.sha256
+          if-no-files-found: error
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/Ciji-*.dmg
+            build/Ciji-*.dmg.sha256
+          generate_release_notes: true

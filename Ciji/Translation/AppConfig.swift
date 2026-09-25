@@ -62,9 +62,24 @@ struct AppConfig: Equatable, Codable {
             ?? Bundle.main.url(forResource: "config.sample", withExtension: "json", subdirectory: "Resources")
     }
 
+    private static var cached: (date: Date, config: AppConfig)?
+
+    /// Cached by modification date: called on every keystroke via GlossService.
     static func load() -> AppConfig {
-        ensureSupportFiles()
         let url = configURL()
+        let modified = (try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate]) as? Date
+        if let modified, let cached, cached.date == modified {
+            return cached.config
+        }
+        let config = loadFromDisk(url)
+        if let modified {
+            cached = (modified, config)
+        }
+        return config
+    }
+
+    private static func loadFromDisk(_ url: URL) -> AppConfig {
+        ensureSupportFiles()
         guard let data = try? Data(contentsOf: url) else { return .empty }
         let decoder = JSONDecoder()
         if let parsed = try? decoder.decode(AppConfig.self, from: data) {
@@ -119,5 +134,6 @@ struct AppConfig: Equatable, Codable {
         if let data = try? encoder.encode(self) {
             try? data.write(to: AppConfig.configURL())
         }
+        AppConfig.cached = nil
     }
 }

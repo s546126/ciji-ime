@@ -39,6 +39,7 @@ final class InputSession {
     private var asciiMode = false
     private var scheme: Scheme = AppConfig.load().preferredScheme
     private var glossToken: UInt64 = 0
+    private var shiftTapPending = false
 
     private static let punct: [String: String] = [
         ",": "，",
@@ -74,105 +75,143 @@ final class InputSession {
     }
 
     func deactivate() {
-        clear(commit: false, client: nil)
+        clear(client: nil)
         CandidatePanel.shared.hide()
+        UserHistory.shared.resetContext()
     }
 
     func commitIfNeeded(client: IMKTextInput?) {
         if !keys.isEmpty {
-            commitIndex(0, client: client, insertRemainingRaw: false)
+            commitIndex(selected, client: client)
         }
     }
 
     func handle(_ event: NSEvent, client: IMKTextInput?) -> Bool {
         if event.type == .flagsChanged {
-            return handleFlags(event)
+            return handleFlags(event, client: client)
         }
         guard event.type == .keyDown else { return false }
+        shiftTapPending = false
 
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if mods.contains(.control), mods.contains(.shift), event.charactersIgnoringModifiers?.lowercased() == "p" {
             toggleScheme(client: client)
             return true
         }
-        if mods.contains(.command) {
+        if mods.contains(.command) || mods.contains(.control) || mods.contains(.option) {
+            if !keys.isEmpty {
+                // Let shortcuts through, but don't leave a dangling composition.
+                commitIndex(selected, client: client)
+            }
             return false
-        }
-        if mods.contains(.control) {
-            return false
-        }
-
-        if event.keyCode == 0x39 { // Caps Lock
-            setASCII(!asciiMode, client: client)
-            return true
         }
 
         if asciiMode {
             return false
         }
 
-        if event.keyCode == 53 { // escape
-            if keys.isEmpty { return false }
-            clear(commit: false, client: client)
+        let composing = !keys.isEmpty
+        switch event.keyCode {
+        case 53: // escape
+            guard composing else { return false }
+            clear(client: client)
             return true
-        }
-        if event.keyCode == 51 { // delete
-            if keys.isEmpty { return false }
+        case 51: // delete
+            guard composing else { return false }
             keys.removeLast()
+            selected = 0
+            page = 0
             refresh(client: client)
             return true
-        }
-        if event.keyCode == 36 || event.keyCode == 76 { // return / keypad enter
-            if keys.isEmpty { return false }
-            if !visibleCandidates().isEmpty {
-                commitIndex(selected, client: client, insertRemainingRaw: false)
-            } else {
-                insert(keys, client: client)
-                clear(commit: false, client: client)
-            }
+        case 36, 76: // return / keypad enter → raw letters
+            guard composing else { return false }
+            insert(keys.replacingOccurrences(of: "'", with: ""), client: client)
+            clear(client: client)
+            UserHistory.shared.resetContext()
             return true
+        case 126: // up
+            guard composing else { return false }
+            moveSelection(-1, client: client)
+            return true
+        case 125: // down
+            guard composing else { return false }
+            moveSelection(1, client: client)
+            return true
+        case 116, 123: // page up, left
+            guard composing else { return false }
+            page(delta: -1, client: client)
+            return true
+        case 121, 124: // page down, right
+            guard composing else { return false }
+            page(delta: 1, client: client)
+            return true
+        case 48: // tab
+            guard composing else { return false }
+            if mods.contains(.shift) { page(delta: -1, client: client) } else { page(delta: 1, client: client) }
+            return true
+        default:
+            break
         }
 
         let chars = event.charactersIgnoringModifiers ?? ""
-        if keys.isEmpty == false {
-            if chars == " " {
-                commitIndex(0, client: client, insertRemainingRaw: false)
+        if composing {
+            switch chars {
+            case " ":
+                commitIndex(selected, client: client)
                 return true
-            }
-            if chars == "-" {
+            case "-", "[":
                 page(delta: -1, client: client)
                 return true
-            }
-            if chars == "=" {
+            case "=", "]":
                 page(delta: 1, client: client)
                 return true
+            case "'" where scheme == .quanpin:
+                if keys.last != "'" {
+                    keys.append("'")
+                    refresh(client: client)
+                }
+                return true
+            default:
+                break
             }
             if let number = Int(chars), (1...9).contains(number) {
-                commitIndex(number - 1, client: client, insertRemainingRaw: false)
+                if number <= visibleCandidates().count {
+                    commitIndex(number - 1, client: client)
+                }
                 return true
             }
         }
 
-        if let first = chars.lowercased().first, first.isLetter, first.isASCII {
-            keys.append(first)
+        if let first = chars.first, chars.count == 1, first.isASCII, first.isLetter {
+            if mods.contains(.shift) && !composing {
+                // Shift+letter with nothing composed types the capital directly.
+                return false
+            }
+            keys.append(Character(first.lowercased()))
             selected = 0
             page = 0
             refresh(client: client)
             return true
         }
 
-        if let mapped = Self.punct[chars] ?? Self.punct[event.characters ?? ""] {
-            if !keys.isEmpty {
-                commitIndex(0, client: client, insertRemainingRaw: false)
+        let typed = event.characters ?? chars
+        if let mapped = Self.punct[typed] ?? Self.punct[chars] {
+            if composing {
+                commitIndex(selected, client: client)
             }
             insert(mapped, client: client)
+            UserHistory.shared.resetContext()
             return true
         }
 
-        if !keys.isEmpty, let raw = event.characters, !raw.isEmpty {
-            commitIndex(0, client: client, insertRemainingRaw: false)
-            insert(raw, client: client)
+        if composing, !typed.isEmpty {
+            commitIndex(selected, client: client)
+            insert(typed, client: client)
+            UserHistory.shared.resetContext()
             return true
+        }
+        if !typed.isEmpty {
+            UserHistory.shared.resetContext()
         }
         return false
     }
@@ -218,7 +257,7 @@ final class InputSession {
     func setASCII(_ on: Bool, client: IMKTextInput?) {
         asciiMode = on
         if on {
-            clear(commit: false, client: client)
+            clear(client: client)
         }
         NotificationCenter.default.post(name: .cijiStateChanged, object: nil)
     }
@@ -227,13 +266,51 @@ final class InputSession {
         setASCII(!asciiMode, client: client)
     }
 
-    private func handleFlags(_ event: NSEvent) -> Bool {
-        if event.keyCode == 0x39 {
-            let on = event.modifierFlags.contains(.capsLock)
-            setASCII(on, client: nil)
-            return true
+    private func handleFlags(_ event: NSEvent, client: IMKTextInput?) -> Bool {
+        let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if event.keyCode == 0x39 { // Caps Lock
+            setASCII(mods.contains(.capsLock), client: client)
+            return false
         }
+        // A lone tap of Shift (56 left / 60 right) toggles 中/英.
+        if event.keyCode == 56 || event.keyCode == 60 {
+            if mods == .shift {
+                shiftTapPending = true
+            } else if mods.isEmpty, shiftTapPending {
+                shiftTapPending = false
+                if !keys.isEmpty {
+                    insert(keys.replacingOccurrences(of: "'", with: ""), client: client)
+                    clear(client: client)
+                }
+                setASCII(!asciiMode, client: client)
+            } else {
+                shiftTapPending = false
+            }
+            return false
+        }
+        shiftTapPending = false
         return false
+    }
+
+    private func moveSelection(_ delta: Int, client: IMKTextInput?) {
+        let count = visibleCandidates().count
+        guard count > 0 else { return }
+        let next = selected + delta
+        if next < 0 {
+            if page > 0 {
+                page -= 1
+                selected = visibleCandidates().count - 1
+            }
+        } else if next >= count {
+            if (page + 1) * pageSize < candidates.count {
+                page += 1
+                selected = 0
+            }
+        } else {
+            selected = next
+        }
+        render(client: client)
+        requestGlosses()
     }
 
     private func visibleCandidates() -> [Candidate] {
@@ -247,6 +324,7 @@ final class InputSession {
         page = (page + delta + pages) % pages
         selected = 0
         render(client: client)
+        requestGlosses()
     }
 
     private func refresh(client: IMKTextInput?) {
@@ -325,31 +403,30 @@ final class InputSession {
         }
     }
 
-    private func commitIndex(_ index: Int, client: IMKTextInput?, insertRemainingRaw: Bool) {
+    private func commitIndex(_ index: Int, client: IMKTextInput?) {
         let visible = visibleCandidates()
         guard !visible.isEmpty else {
-            insert(keys, client: client)
-            clear(commit: false, client: client)
+            insert(keys.replacingOccurrences(of: "'", with: ""), client: client)
+            clear(client: client)
             return
         }
         let idx = min(max(index, 0), visible.count - 1)
         let chosen = visible[idx]
         insert(chosen.phrase, client: client)
-        if chosen.consumed > 0, chosen.consumed < keys.count {
-            keys = String(keys.dropFirst(chosen.consumed))
+        UserHistory.shared.record(chosen)
+        var remaining = chosen.consumed > 0 ? String(keys.dropFirst(chosen.consumed)) : ""
+        while remaining.hasPrefix("'") { remaining.removeFirst() }
+        if !remaining.isEmpty {
+            keys = remaining
             selected = 0
             page = 0
             refresh(client: client)
         } else {
-            clear(commit: false, client: client)
+            clear(client: client)
         }
-        _ = insertRemainingRaw
     }
 
-    private func clear(commit: Bool, client: IMKTextInput?) {
-        if commit, !keys.isEmpty {
-            insert(keys, client: client)
-        }
+    private func clear(client: IMKTextInput?) {
         keys = ""
         candidates = []
         selected = 0
@@ -359,14 +436,7 @@ final class InputSession {
     }
 
     private func segmentedKeys() -> String {
-        switch scheme {
-        case .xiaohe:
-            let (units, rest) = Xiaohe.chunk(keys)
-            return Pinyin.formatSegmented(units, rest: rest)
-        case .quanpin:
-            let (units, rest) = Pinyin.segmentQuanpinPrefix(keys)
-            return Pinyin.formatSegmented(units, rest: rest)
-        }
+        Segmentation.make(scheme, keys: keys).display
     }
 
     private func mark(_ text: String, client: IMKTextInput?) {

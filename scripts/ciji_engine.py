@@ -293,6 +293,15 @@ def shorten_gloss(gloss: str, limit: int = 28) -> str:
     return joined
 
 
+# --------------------------------------------------------------------------
+# Decoder. Ciji/Engine/Lexicon.swift + Decoder.swift mirror this exactly;
+# change both together and keep tests/test_engine.py green.
+# --------------------------------------------------------------------------
+
+import math
+from bisect import bisect_left
+
+
 @dataclass(frozen=True)
 class LexEntry:
     phrase: str
@@ -311,558 +320,219 @@ class LexEntry:
 class Candidate:
     phrase: str
     gloss: str
-    consumed: int
+    consumed: int  # number of typed keys this candidate replaces
     segmented: str
-    score: int
-    source: str  # "sentence" | "phrase"
+    score: float
+    source: str  # "sentence" | "word" | "partial"
 
 
-def entry_score(entry: LexEntry, consumed: int, input_len: int) -> int:
-    score = int(entry.freq)
-    if consumed == input_len and len(entry.xiaohe) == input_len:
-        score += 8000
-    elif consumed == input_len:
-        score += 3500
-    score += consumed * 40
-    score += min(entry.syllable_count, 4) * 25
-    if entry.syllable_count == 1:
-        score -= 15
-    return score
-
-
-def dp_weight(entry: LexEntry) -> int:
-    """Path cost that prefers real words over stacking single characters."""
-    if entry.syllable_count >= 2:
-        return 3000 * entry.syllable_count + min(entry.freq, 12000)
-    return 400 if entry.freq >= 1000 else 80
+# Cap for prefix scans so a one-letter prefix never walks the whole lexicon.
+PREFIX_SCAN_LIMIT = 60000
+# Completing the last syllable (quanpin "zhonggu" → 中国) costs this much log-prob.
+EXTENSION_PENALTY = 2.5
 
 
 class Lexicon:
     def __init__(self, entries: Sequence[LexEntry]):
         self.entries = list(entries)
-        self.by_xiaohe: dict[str, List[LexEntry]] = {}
-        self.by_quanpin: dict[str, List[LexEntry]] = {}
-        self.xiaohe_keys: List[str] = []
-        self.quanpin_keys: List[str] = []
+        total = sum(max(e.freq, 0) for e in self.entries) or 1
+        self.log_total = math.log(total)
+        self.by_code: dict[str, dict[str, List[LexEntry]]] = {"xiaohe": {}, "quanpin": {}}
         for e in self.entries:
-            self.by_xiaohe.setdefault(e.xiaohe, []).append(e)
-            self.by_quanpin.setdefault(e.quanpin, []).append(e)
-        self.xiaohe_keys = sorted(self.by_xiaohe)
-        self.quanpin_keys = sorted(self.by_quanpin)
+            self.by_code["xiaohe"].setdefault(e.xiaohe, []).append(e)
+            self.by_code["quanpin"].setdefault(e.quanpin, []).append(e)
+        self.sorted_codes: dict[str, List[str]] = {}
+        for scheme, table in self.by_code.items():
+            for lst in table.values():
+                lst.sort(key=lambda e: -e.freq)
+            self.sorted_codes[scheme] = sorted(table)
 
-    def _prefix_keys(self, keys: List[str], prefix: str) -> List[str]:
-        if not prefix:
-            return []
-        # Binary search lower bound.
-        lo, hi = 0, len(keys)
-        while lo < hi:
-            mid = (lo + hi) // 2
-            if keys[mid] < prefix:
-                lo = mid + 1
-            else:
-                hi = mid
-        out = []
-        i = lo
-        while i < len(keys) and keys[i].startswith(prefix):
-            out.append(keys[i])
+    def logp(self, entry: LexEntry) -> float:
+        return math.log(entry.freq + 1) - self.log_total
+
+    def exact(self, scheme: str, code: str) -> List[LexEntry]:
+        return self.by_code[scheme].get(code, [])
+
+    def completions(
+        self, scheme: str, head: Sequence[str], tail: str, limit: int
+    ) -> List[LexEntry]:
+        """Top entries spelled `head` syllables + one syllable starting with `tail`."""
+        prefix = "".join(head) + tail
+        syllables = len(head) + 1
+        codes = self.sorted_codes[scheme]
+        table = self.by_code[scheme]
+        found: List[LexEntry] = []
+        i = bisect_left(codes, prefix)
+        scanned = 0
+        while i < len(codes) and codes[i].startswith(prefix) and scanned < PREFIX_SCAN_LIMIT:
+            for e in table[codes[i]]:
+                if e.syllable_count == syllables and (
+                    scheme == "xiaohe" or _quanpin_fits(e, head, tail)
+                ):
+                    found.append(e)
             i += 1
-            if len(out) >= 64:
-                break
-        return out
-
-    def lookup_xiaohe(self, code: str, prefix: bool = False) -> List[LexEntry]:
-        if prefix:
-            found: List[LexEntry] = []
-            for key in self._prefix_keys(self.xiaohe_keys, code):
-                found.extend(self.by_xiaohe[key])
-            return found
-        return list(self.by_xiaohe.get(code, []))
-
-    def lookup_quanpin(self, code: str, prefix: bool = False) -> List[LexEntry]:
-        if prefix:
-            found: List[LexEntry] = []
-            for key in self._prefix_keys(self.quanpin_keys, code):
-                found.extend(self.by_quanpin[key])
-            return found
-        return list(self.by_quanpin.get(code, []))
+            scanned += 1
+        found.sort(key=lambda e: -e.freq)
+        return found[:limit]
 
 
-def _decode_units(
-    units: Sequence[str],
-    rest: str,
-    raw_keys: str,
-    lookup_exact,
-    lookup_prefix,
-    encode_units,
-) -> List[Candidate]:
+def _quanpin_fits(entry: LexEntry, head: Sequence[str], tail: str) -> bool:
+    # Joined quanpin codes are ambiguous (xian vs xi'an); check syllable by syllable.
+    n = len(head)
+    return tuple(entry.syllables[:n]) == tuple(head) and entry.syllables[n].startswith(tail)
+
+
+@dataclass
+class Segmentation:
+    units: List[str]  # complete syllable codes (xiaohe pairs or quanpin syllables)
+    ends: List[int]  # key offset just after each unit
+    rest: str  # trailing incomplete code
+    display: str
+
+
+def segment(scheme: str, keys: str) -> Segmentation:
+    keys = keys.lower()
+    if scheme == "xiaohe":
+        units, rest = xiaohe_syllables(keys)
+        ends = [2 * (i + 1) for i in range(len(units))]
+        return Segmentation(units, ends, rest, format_segmented(units, rest))
+    units: List[str] = []
+    ends: List[int] = []
+    offset = 0
+    chunks = keys.split("'")
+    rest = ""
+    for idx, chunk in enumerate(chunks):
+        head, tail = segment_quanpin_prefix(chunk)
+        for syl in head:
+            offset += len(syl)
+            units.append(syl)
+            ends.append(offset)
+        if tail:
+            # Anything unparsed stops segmentation; it stays as raw rest.
+            rest = tail if idx == len(chunks) - 1 else "'".join([tail] + chunks[idx + 1 :])
+            break
+        offset += 1  # the apostrophe
+    return Segmentation(units, ends, rest, format_segmented(units, rest))
+
+
+def sentence_gloss(words: Sequence[LexEntry]) -> str:
+    parts = []
+    for e in words:
+        g = e.gloss.split(";")[0].strip()
+        if g.startswith("≈ "):
+            g = g[2:]
+        if g:
+            parts.append(g)
+    return " · ".join(parts)
+
+
+def decode(lexicon: Lexicon, scheme: str, keys: str) -> List[Candidate]:
+    keys = keys.lower()
+    if not keys:
+        return []
+    seg = segment(scheme, keys)
+    units, rest = seg.units, seg.rest
     n = len(units)
-    # DP over complete syllables.
-    best_score = [-10**9] * (n + 1)
-    best_path: List[Optional[List[LexEntry]]] = [None] * (n + 1)
-    best_score[0] = 0
-    best_path[0] = []
+    total_keys = len(keys)
+
+    def code(i: int, j: int) -> str:
+        return "".join(units[i:j])
+
+    def exact(i: int, j: int) -> List[LexEntry]:
+        words = lexicon.exact(scheme, code(i, j))
+        if scheme == "quanpin":
+            want = tuple(units[i:j])
+            words = [e for e in words if e.syllables == want]
+        return words
+
+    # --- sentence DP over complete units (+ optional partial last word)
+    NEG = float("-inf")
+    best = [NEG] * (n + 2)
+    path: List[List[LexEntry]] = [[] for _ in range(n + 2)]
+    best[0] = 0.0
     for end in range(1, n + 1):
-        for start in range(0, end):
-            if best_path[start] is None:
+        for start in range(end):
+            if best[start] == NEG:
                 continue
-            code = encode_units(units[start:end])
-            if not code:
+            words = exact(start, end)
+            if not words:
                 continue
-            for entry in lookup_exact(code):
-                sc = best_score[start] + dp_weight(entry)
-                if sc > best_score[end]:
-                    best_score[end] = sc
-                    best_path[end] = (best_path[start] or []) + [entry]
+            w = words[0]
+            sc = best[start] + lexicon.logp(w)
+            if sc > best[end]:
+                best[end] = sc
+                path[end] = path[start] + [w]
+    final = n
+    if rest:
+        for start in range(n + 1):
+            if best[start] == NEG:
+                continue
+            words = lexicon.completions(scheme, units[start:n], rest, 1)
+            if not words:
+                continue
+            sc = best[start] + lexicon.logp(words[0])
+            if sc > best[n + 1]:
+                best[n + 1] = sc
+                path[n + 1] = path[start] + [words[0]]
+        final = n + 1
 
-    candidates: List[Candidate] = []
-    seen = set()
+    out: List[Candidate] = []
+    seen: set[str] = set()
 
-    def add(phrase: str, gloss: str, consumed: int, segmented: str, score: int, source: str) -> None:
-        if phrase in seen or not phrase:
+    def add(phrase: str, gloss: str, consumed: int, score: float, source: str) -> None:
+        if not phrase or phrase in seen:
             return
         seen.add(phrase)
-        candidates.append(
-            Candidate(
-                phrase=phrase,
-                gloss=gloss,
-                consumed=consumed,
-                segmented=segmented,
-                score=score,
-                source=source,
-            )
-        )
+        out.append(Candidate(phrase, gloss, consumed, seg.display, score, source))
 
-    segmented = format_segmented(units, rest)
-    full_consumed = len(raw_keys) - len(rest)
-
-    if n > 0 and best_path[n]:
-        path = best_path[n]
-        phrase = "".join(e.phrase for e in path)
-        gloss = " / ".join(e.gloss for e in path if e.gloss)
-        full_code = encode_units(units)
-        for entry in lookup_exact(full_code):
-            if entry.phrase == phrase and entry.gloss:
-                gloss = entry.gloss
-                break
-        add(phrase, gloss, full_consumed, segmented, best_score[n] + 5000, "sentence")
-
-    # Phrase matches from the start (exact spans, then prefix on leftover).
-    for end in range(n, 0, -1):
-        code = encode_units(units[:end])
-        if not code:
-            continue
-        consumed_keys = len("".join(units[:end]))
-        for entry in lookup_exact(code):
-            add(
-                entry.phrase,
-                entry.gloss,
-                consumed_keys,
-                segmented,
-                entry_score(entry, consumed_keys, len(raw_keys)) + end * 80,
-                "phrase",
-            )
-
-    if rest:
-        prefix_code = encode_units(units) + rest if units else rest
-        if encode_units(units) or rest:
-            code = (encode_units(units) or "") + rest
-            for entry in lookup_prefix(code):
-                add(
-                    entry.phrase,
-                    entry.gloss,
-                    len(raw_keys),
-                    segmented,
-                    entry_score(entry, len(raw_keys), len(raw_keys)),
-                    "phrase",
-                )
-
-    # Always include first-syllable alternatives.
-    if n >= 1:
-        code = encode_units(units[:1])
-        if code:
-            for entry in lookup_exact(code):
-                add(
-                    entry.phrase,
-                    entry.gloss,
-                    len(units[0]),
-                    segmented,
-                    entry_score(entry, len(units[0]), len(raw_keys)),
-                    "phrase",
-                )
-
-    # Compose 2-character guesses from single-character readings of the
-    # first two syllables (握的 / 握得 / 卧的), scored below real words.
-    if n >= 2:
-        first_code = encode_units(units[:1])
-        second_code = encode_units(units[1:2])
-        def usable_char(entry: LexEntry) -> bool:
-            if len(entry.phrase) != 1:
-                return False
-            low = entry.gloss.lower()
-            return "variant of" not in low and "archaic" not in low
-
-        first_chars = [e for e in lookup_exact(first_code) if usable_char(e)]
-        second_chars = [e for e in lookup_exact(second_code) if usable_char(e)]
-        first_chars.sort(key=lambda e: -e.freq)
-        second_chars.sort(key=lambda e: -e.freq)
-        consumed_two = len(units[0]) + len(units[1])
-        for a in first_chars[:8]:
-            for b in second_chars[:4]:
-                combo = a.phrase + b.phrase
-                gloss = a.gloss if a.gloss else b.gloss
-                if a.gloss and b.gloss and a.gloss != b.gloss:
-                    gloss = f"{a.gloss}; {b.gloss}"
-                add(
-                    combo,
-                    shorten_gloss(gloss),
-                    consumed_two,
-                    segmented,
-                    min(a.freq, b.freq) // 4 + 80,
-                    "compose",
-                )
+    # --- words covering the whole input
+    full: List[Tuple[float, LexEntry]] = []
+    if n and not rest:
+        full += [(lexicon.logp(e), e) for e in exact(0, n)]
+        if scheme == "quanpin" and n >= 2:
+            for e in lexicon.completions(scheme, units[: n - 1], units[n - 1], 12):
+                if e.syllables[-1] != units[n - 1]:
+                    full.append((lexicon.logp(e) - EXTENSION_PENALTY, e))
     elif rest:
-        for entry in lookup_prefix(rest):
+        full += [(lexicon.logp(e), e) for e in lexicon.completions(scheme, units, rest, 40)]
+    full.sort(key=lambda x: -x[0])
+
+    sentence = path[final] if best[final] != NEG else []
+    sentence_score = best[final]
+    if len(sentence) >= 2:
+        phrase = "".join(e.phrase for e in sentence)
+        gloss = sentence_gloss(sentence)
+        if not full or sentence_score > full[0][0]:
+            add(phrase, gloss, total_keys, sentence_score, "sentence")
+            sentence = []
+    for i, (score, e) in enumerate(full):
+        add(e.phrase, e.gloss, total_keys, score, "word")
+        if i == 0 and len(sentence) >= 2:
             add(
-                entry.phrase,
-                entry.gloss,
-                len(raw_keys),
-                segmented,
-                entry_score(entry, len(raw_keys), len(raw_keys)),
-                "phrase",
+                "".join(x.phrase for x in sentence),
+                sentence_gloss(sentence),
+                total_keys,
+                sentence_score,
+                "sentence",
             )
 
-    candidates.sort(key=lambda c: (-c.score, len(c.phrase), c.phrase))
-    return candidates
+    # --- words covering a prefix of the input (longest first)
+    for k in range(n - 1 if not rest else n, 0, -1):
+        words = exact(0, k)
+        if k >= 2:
+            words = words[:6]
+        for e in words:
+            add(e.phrase, e.gloss, seg.ends[k - 1], lexicon.logp(e), "partial")
+
+    if n == 0 and rest:
+        for e in lexicon.completions(scheme, [], rest, 60):
+            add(e.phrase, e.gloss, total_keys, lexicon.logp(e), "word")
+    return out
 
 
 def decode_xiaohe(lexicon: Lexicon, keys: str) -> List[Candidate]:
-    keys = keys.lower()
-    if not keys:
-        return []
-    units, rest = xiaohe_syllables(keys)
-    return _decode_units(
-        units,
-        rest,
-        keys,
-        lookup_exact=lambda code: lexicon.lookup_xiaohe(code, prefix=False),
-        lookup_prefix=lambda code: lexicon.lookup_xiaohe(code, prefix=True),
-        encode_units=lambda parts: "".join(parts),
-    )
+    return decode(lexicon, "xiaohe", keys)
 
 
 def decode_quanpin(lexicon: Lexicon, keys: str) -> List[Candidate]:
-    keys = keys.lower()
-    if not keys:
-        return []
-    units, rest = segment_quanpin_prefix(keys)
-    return _decode_units(
-        units,
-        rest,
-        keys,
-        lookup_exact=lambda code: lexicon.lookup_quanpin(code, prefix=False),
-        lookup_prefix=lambda code: lexicon.lookup_quanpin(code, prefix=True),
-        encode_units=lambda parts: "".join(parts),
-    )
-
-
-# Small high-value frequency overlay. Values are added on top of the base score.
-FREQUENCY_BOOST = {
-    "的": 9800,
-    "了": 9600,
-    "是": 9500,
-    "我": 9400,
-    "不": 9300,
-    "在": 9200,
-    "他": 9100,
-    "有": 9000,
-    "这": 8900,
-    "个": 8800,
-    "人": 8700,
-    "们": 8600,
-    "中": 8500,
-    "来": 8400,
-    "上": 8300,
-    "大": 8200,
-    "为": 8100,
-    "和": 8000,
-    "国": 7900,
-    "地": 7800,
-    "到": 7700,
-    "以": 7600,
-    "说": 7500,
-    "时": 7400,
-    "要": 7300,
-    "就": 7200,
-    "出": 7100,
-    "会": 7000,
-    "可": 6900,
-    "也": 6800,
-    "你": 6700,
-    "对": 6600,
-    "生": 6500,
-    "能": 6400,
-    "而": 6300,
-    "子": 6200,
-    "那": 6100,
-    "得": 6000,
-    "于": 5900,
-    "着": 5800,
-    "下": 5700,
-    "自": 5600,
-    "之": 5500,
-    "年": 5400,
-    "过": 5300,
-    "发": 5200,
-    "后": 5100,
-    "作": 5000,
-    "里": 4900,
-    "用": 4800,
-    "道": 4700,
-    "行": 4600,
-    "所": 4500,
-    "然": 4400,
-    "家": 4300,
-    "种": 4200,
-    "事": 4100,
-    "成": 4000,
-    "方": 3900,
-    "多": 3800,
-    "经": 3700,
-    "么": 3600,
-    "去": 3500,
-    "法": 3400,
-    "学": 3300,
-    "如": 3200,
-    "都": 3100,
-    "同": 3000,
-    "现": 2900,
-    "当": 2800,
-    "没": 2700,
-    "动": 2600,
-    "面": 2500,
-    "起": 2450,
-    "看": 2400,
-    "定": 2350,
-    "天": 2300,
-    "分": 2250,
-    "还": 2200,
-    "进": 2150,
-    "好": 2100,
-    "小": 2050,
-    "部": 2000,
-    "其": 1980,
-    "些": 1960,
-    "主": 1940,
-    "样": 1920,
-    "理": 1900,
-    "心": 1880,
-    "她": 1860,
-    "本": 1840,
-    "前": 1820,
-    "开": 1800,
-    "但": 1780,
-    "因": 1760,
-    "只": 1740,
-    "从": 1720,
-    "想": 1700,
-    "实": 1680,
-    "日": 1660,
-    "军": 1640,
-    "者": 1620,
-    "意": 1600,
-    "无": 1580,
-    "力": 1560,
-    "它": 1540,
-    "与": 1520,
-    "长": 1500,
-    "把": 1480,
-    "机": 1460,
-    "十": 1440,
-    "民": 1420,
-    "第": 1400,
-    "公": 1380,
-    "此": 1360,
-    "已": 1340,
-    "工": 1320,
-    "使": 1300,
-    "情": 1280,
-    "明": 1260,
-    "性": 1240,
-    "知": 1220,
-    "全": 1200,
-    "三": 1180,
-    "又": 1160,
-    "关": 1140,
-    "点": 1120,
-    "正": 1100,
-    "业": 1080,
-    "外": 1060,
-    "将": 1040,
-    "两": 1020,
-    "高": 1000,
-    "间": 980,
-    "由": 960,
-    "问": 940,
-    "很": 920,
-    "最": 900,
-    "重": 880,
-    "并": 860,
-    "物": 840,
-    "手": 820,
-    "应": 800,
-    "战": 780,
-    "向": 760,
-    "头": 740,
-    "文": 720,
-    "体": 700,
-    "政": 680,
-    "美": 660,
-    "相": 640,
-    "见": 620,
-    "被": 600,
-    "利": 590,
-    "什": 580,
-    "二": 570,
-    "等": 560,
-    "产": 550,
-    "或": 540,
-    "新": 530,
-    "己": 520,
-    "制": 510,
-    "身": 500,
-    "果": 490,
-    "加": 480,
-    "西": 470,
-    "斯": 460,
-    "月": 450,
-    "话": 440,
-    "合": 430,
-    "回": 420,
-    "特": 410,
-    "代": 400,
-    "内": 390,
-    "信": 380,
-    "表": 370,
-    "化": 360,
-    "老": 350,
-    "给": 340,
-    "世": 330,
-    "位": 320,
-    "次": 310,
-    "度": 300,
-    "门": 290,
-    "任": 280,
-    "常": 270,
-    "先": 260,
-    "海": 250,
-    "通": 240,
-    "教": 230,
-    "儿": 220,
-    "原": 210,
-    "东": 200,
-    "声": 195,
-    "提": 190,
-    "立": 185,
-    "及": 180,
-    "比": 175,
-    "员": 170,
-    "解": 165,
-    "水": 160,
-    "名": 155,
-    "真": 150,
-    "论": 145,
-    "处": 140,
-    "走": 135,
-    "义": 130,
-    "各": 125,
-    "入": 120,
-    "几": 115,
-    "口": 110,
-    "认": 108,
-    "条": 106,
-    "平": 104,
-    "系": 102,
-    "区": 100,
-    "我的": 9200,
-    "名字": 8800,
-    "我的名字": 9900,
-    "什么": 8600,
-    "我们": 8700,
-    "自己": 8500,
-    "可以": 8400,
-    "这个": 8300,
-    "没有": 8200,
-    "因为": 8100,
-    "但是": 8000,
-    "如果": 7900,
-    "所以": 7800,
-    "一个": 9000,
-    "不是": 7700,
-    "现在": 7600,
-    "他们": 7500,
-    "自己的": 7400,
-    "中国": 9100,
-    "什么的": 2000,
-    "你好": 7000,
-    "谢谢": 6900,
-    "谢谢你": 6800,
-    "再见": 6700,
-    "对不起": 6600,
-    "没关系": 6500,
-    "请问": 6400,
-    "多少": 6300,
-    "怎么": 6200,
-    "怎样": 6100,
-    "为什么": 6000,
-    "时候": 5900,
-    "时间": 5800,
-    "今天": 5700,
-    "明天": 5600,
-    "昨天": 5500,
-    "朋友": 5400,
-    "老师": 5300,
-    "学生": 5200,
-    "工作": 5100,
-    "学习": 5000,
-    "生活": 4900,
-    "问题": 4800,
-    "方法": 4700,
-    "世界": 4600,
-    "国家": 4500,
-    "人民": 4400,
-    "历史": 4300,
-    "文化": 4200,
-    "社会": 4100,
-    "经济": 4000,
-    "政治": 3900,
-    "科学": 3800,
-    "技术": 3700,
-    "电脑": 3600,
-    "手机": 3500,
-    "输入": 3400,
-    "输入法": 3300,
-    "拼音": 3200,
-    "汉字": 3100,
-    "中文": 3000,
-    "英语": 2900,
-    "单词": 2800,
-    "词汇": 2700,
-    "意思": 2600,
-    "翻译": 2500,
-}
-
-
-# Extra phrases that users expect even if CEDICT omits them as a whole.
-EXTRA_PHRASES: List[Tuple[str, Tuple[str, ...], str, int]] = [
-    ("我的", ("wo", "de"), "my; mine", 9200),
-    ("我的名字", ("wo", "de", "ming", "zi"), "my name", 9900),
-    ("我的帽子", ("wo", "de", "mao", "zi"), "my hat", 2100),
-    ("输入法", ("shu", "ru", "fa"), "input method", 3300),
-]
-
-
-def base_freq(phrase: str, syllable_count: int) -> int:
-    boost = FREQUENCY_BOOST.get(phrase, 0)
-    # Prefer real words over obscure long names: shorter common items rank well.
-    length_term = max(10, 220 - syllable_count * 18 - max(0, len(phrase) - 4) * 12)
-    return boost + length_term
+    return decode(lexicon, "quanpin", keys)
