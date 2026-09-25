@@ -22,6 +22,11 @@ SWIFT_SOURCES = [
     ("UserHistory.swift", "Ciji/Engine/UserHistory.swift"),
     ("AppConfig.swift", "Ciji/Translation/AppConfig.swift"),
     ("GlossService.swift", "Ciji/Translation/GlossService.swift"),
+    ("JevService.swift", "Ciji/Translation/JevService.swift"),
+    ("TranslateService.swift", "Ciji/Translation/TranslateService.swift"),
+    ("VocabBook.swift", "Ciji/Vocab/VocabBook.swift"),
+    ("RelingoSync.swift", "Ciji/Vocab/RelingoSync.swift"),
+    ("Speech.swift", "Ciji/Vocab/Speech.swift"),
 ]
 
 RESOURCES = [
@@ -80,7 +85,9 @@ def main() -> None:
     }
 
     def fileref(name: str, path: str, kind: str) -> str:
-        return f'\t\t{file_ids[name]} /* {path} */ = {{isa = PBXFileReference; lastKnownFileType = {kind}; path = {path.split("/")[-1]}; sourceTree = "<group>"; }};'
+        # Vocab/*.swift live beside Translation/ but are listed in that group.
+        rel = "../Vocab/" + path.split("/")[-1] if "/Vocab/" in path else path.split("/")[-1]
+        return f'\t\t{file_ids[name]} /* {path} */ = {{isa = PBXFileReference; lastKnownFileType = {kind}; path = "{rel}"; sourceTree = "<group>"; }};'
 
     lines = [
         "// !$*UTF8*$!",
@@ -203,6 +210,11 @@ def main() -> None:
         "\t\t\tchildren = (",
         f"\t\t\t\t{file_ids['AppConfig.swift']} /* AppConfig.swift */,",
         f"\t\t\t\t{file_ids['GlossService.swift']} /* GlossService.swift */,",
+        f"\t\t\t\t{file_ids['JevService.swift']} /* JevService.swift */,",
+        f"\t\t\t\t{file_ids['TranslateService.swift']} /* TranslateService.swift */,",
+        f"\t\t\t\t{file_ids['VocabBook.swift']} /* VocabBook.swift */,",
+        f"\t\t\t\t{file_ids['RelingoSync.swift']} /* RelingoSync.swift */,",
+        f"\t\t\t\t{file_ids['Speech.swift']} /* Speech.swift */,",
         "\t\t\t);",
         "\t\t\tpath = Translation;",
         '\t\t\tsourceTree = "<group>";',

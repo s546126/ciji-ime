@@ -63,6 +63,10 @@ final class Lexicon {
     private(set) var logTotal: Double = 0
     /// Learned per-phrase bonus (natural-log units) from UserHistory.
     private var boosts: [String: Double] = [:]
+    /// English reverse lookup: "hello" -> [(score, entry id)], best first.
+    private var english: [String: [(Double, Int)]] = [:]
+
+    static let englishMaxPerKey = 12
 
     private init() {
         load()
@@ -116,6 +120,52 @@ final class Lexicon {
         let syl = e.syllables
         guard syl.count == head.count + 1 else { return false }
         return Array(syl[0..<head.count]) == head && syl[head.count].hasPrefix(tail)
+    }
+
+    func englishLookup(_ word: String, limit: Int = 5) -> [LexEntry] {
+        guard let hits = english[word.lowercased()] else { return [] }
+        return hits.prefix(limit).map { entries[$0.1] }
+    }
+
+    /// Mirrors `english_keys` in scripts/ciji_engine.py: 'hello; hi' -> [("hello", 0), ("hi", 1)].
+    static func englishKeys(_ gloss: String) -> [(String, Int)] {
+        var out: [(String, Int)] = []
+        for (i, sense) in gloss.split(separator: ";").prefix(3).enumerated() {
+            var k = ""
+            var depth = 0
+            for ch in sense.lowercased() {
+                if ch == "(" { depth += 1; continue }
+                if ch == ")" { depth = max(0, depth - 1); continue }
+                if depth == 0 { k.append(ch) }
+            }
+            k = k.trimmingCharacters(in: .whitespaces)
+            while let last = k.last, "?!.… ".contains(last) { k.removeLast() }
+            k = k.trimmingCharacters(in: .whitespaces)
+            for prefix in ["to ", "a ", "an ", "the "] where k.hasPrefix(prefix) {
+                k.removeFirst(prefix.count)
+            }
+            let words = k.split(separator: " ")
+            k = words.joined(separator: " ")
+            guard k.count >= 2, k.count <= 24, words.count <= 3,
+                  let first = k.unicodeScalars.first, ("a"..."z").contains(first),
+                  k.unicodeScalars.allSatisfy({ ("a"..."z").contains($0) || $0 == "'" || $0 == "-" || $0 == " " })
+            else { continue }
+            out.append((k, i))
+        }
+        return out
+    }
+
+    private func buildEnglishIndex() {
+        var index: [String: [(Double, Int)]] = [:]
+        for (id, e) in entries.enumerated() where !e.gloss.isEmpty && !e.gloss.hasPrefix("≈") {
+            for (key, senseIdx) in Self.englishKeys(e.gloss) {
+                let score = log(Double(e.freq) + 1) - 0.7 * Double(senseIdx) - 0.3 * Double(max(0, e.phrase.count - 2))
+                index[key, default: []].append((score, id))
+            }
+        }
+        english = index.mapValues { list in
+            Array(list.sorted { $0.0 > $1.0 }.prefix(Self.englishMaxPerKey))
+        }
     }
 
     // MARK: learning
@@ -236,5 +286,6 @@ final class Lexicon {
         logTotal = log(max(total, 1))
         byCode = [.xiaohe: sortedX, .quanpin: sortedQ]
         sortedCodes = [.xiaohe: sortedX.keys.sorted(), .quanpin: sortedQ.keys.sorted()]
+        buildEnglishIndex()
     }
 }

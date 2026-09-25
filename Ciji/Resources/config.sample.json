@@ -2,5 +2,20 @@
   "proxyBaseURL": "",
   "apiKey": "",
   "model": "gemini-2.5-flash",
-  "scheme": "xiaohe"
+  "scheme": "xiaohe",
+  "jev": {
+    "enabled": true,
+    "provider": "openrouter",
+    "apiKey": "",
+    "url": "",
+    "model": "typesafe/jev-1.13",
+    "candidates": 6,
+    "debounceMs": 150,
+    "timeoutMs": 1500
+  },
+  "relingo": {
+    "token": "",
+    "vocabularyId": "",
+    "autoPush": true
+  }
 }

@@ -11,6 +11,8 @@ struct Candidate: Equatable {
     var source: String // "sentence" | "word" | "partial"
     /// Pinyin of the phrase; lets UserHistory learn composed sentences.
     var syllables: [String]
+    /// Moved to the top by the Jev reranker (shown as ✦).
+    var jev = false
 }
 
 struct Segmentation {
@@ -53,6 +55,10 @@ struct Segmentation {
 enum InputDecoder {
     /// Completing the last syllable (quanpin "zhonggu" → 中国) costs this much log-prob.
     static let extensionPenalty = 2.5
+    // English reverse lookup; mirrors ENGLISH_* in scripts/ciji_engine.py.
+    static let englishMinKeys = 3
+    static let englishSlotWhenPinyin = 4
+    static let englishLimitWhenPinyin = 3
 
     static func decode(
         keys: String,
@@ -182,6 +188,28 @@ enum InputDecoder {
             for e in lexicon.completions(scheme, head: [], tail: rest, limit: 60) {
                 add(e.phrase, e.gloss, totalKeys, lexicon.logp(e), "word", e.syllables)
             }
+        }
+
+        // English reverse lookup: "hello" -> 你好, "why" -> 为什么.
+        let english = keys.count >= englishMinKeys
+            ? lexicon.englishLookup(keys.replacingOccurrences(of: "'", with: "")) : []
+        if let top = english.first {
+            // Keep only confident whole-input pinyin readings ahead of the English match.
+            let bar = lexicon.logp(top) - 1.0
+            var slot = 0
+            for c in out {
+                if slot >= englishSlotWhenPinyin || c.consumed != totalKeys || c.score < bar { break }
+                slot += 1
+            }
+            var extra: [Candidate] = []
+            for e in english.prefix(slot > 0 ? englishLimitWhenPinyin : english.count) where !seen.contains(e.phrase) {
+                seen.insert(e.phrase)
+                extra.append(Candidate(
+                    phrase: e.phrase, gloss: e.gloss, consumed: totalKeys, segmented: seg.display,
+                    score: lexicon.logp(e), source: "english", syllables: e.syllables
+                ))
+            }
+            out.insert(contentsOf: extra, at: slot)
         }
         return out
     }

@@ -38,6 +38,11 @@ SOURCES=(
   Ciji/Engine/UserHistory.swift
   Ciji/Translation/AppConfig.swift
   Ciji/Translation/GlossService.swift
+  Ciji/Translation/JevService.swift
+  Ciji/Translation/TranslateService.swift
+  Ciji/Vocab/VocabBook.swift
+  Ciji/Vocab/RelingoSync.swift
+  Ciji/Vocab/Speech.swift
 )
 
 rm -rf "$APP_OUT"
@@ -68,7 +73,7 @@ for arch in $ARCHS; do
     -swift-version 5 \
     -target "${arch}-apple-macosx${DEPLOY_TARGET}" \
     -sdk "$SDKROOT" \
-    -framework Cocoa -framework InputMethodKit -framework Carbon \
+    -framework Cocoa -framework InputMethodKit -framework Carbon -framework AVFoundation \
     -lz \
     -o "${TMP}/${PRODUCT_NAME}-${arch}" \
     "${SOURCES[@]}"

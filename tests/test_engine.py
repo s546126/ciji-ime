@@ -190,6 +190,15 @@ class RankingTests(unittest.TestCase):
         ni = next(c for c in cands if c.phrase == "你")
         self.assertEqual(ni.consumed, 2)
 
+    def test_english_reverse_lookup(self) -> None:
+        for keys, want in (("hello", "你好"), ("why", "为什么"), ("translate", "翻译"), ("computer", "电脑")):
+            phrases = [c.phrase for c in decode_quanpin(self.lex, keys)]
+            self.assertEqual(phrases[0], want, keys)
+        # Real pinyin keeps priority; the English match is still offered.
+        fan = [c.phrase for c in decode_quanpin(self.lex, "fan")]
+        self.assertNotEqual(fan[0], "粉丝")
+        self.assertEqual(decode_xiaohe(self.lex, "hello")[0].phrase, "你好")
+
     def test_every_candidate_has_english(self) -> None:
         for keys in ("nihao", "woshizhongguoren", "shurufa"):
             top = decode_quanpin(self.lex, keys)[0]

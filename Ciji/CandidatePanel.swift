@@ -32,9 +32,19 @@ final class CandidatePanel {
         panel.orderOut(nil)
     }
 
-    func update(segmented: String, candidates: [Candidate], selected: Int, page: Int, pageSize: Int) {
+    func update(
+        segmented: String,
+        candidates: [Candidate],
+        badges: [String],
+        footer: String?,
+        selected: Int,
+        page: Int,
+        pageSize: Int
+    ) {
         view.segmented = segmented
         view.candidates = candidates
+        view.badges = badges
+        view.footer = footer ?? ""
         view.selected = selected
         view.needsDisplay = true
         let size = view.preferredSize
@@ -67,6 +77,8 @@ final class CandidatePanel {
 private final class CandidateView: NSView {
     var segmented = ""
     var candidates: [Candidate] = []
+    var badges: [String] = []
+    var footer = ""
     var selected = 0
 
     private let rowHeight: CGFloat = 24
@@ -75,11 +87,13 @@ private final class CandidateView: NSView {
     private let highlight = NSColor(calibratedRed: 42 / 255, green: 142 / 255, blue: 142 / 255, alpha: 1)
     private let panelFill = NSColor(calibratedWhite: 0.12, alpha: 0.96)
     private let glossColor = NSColor(calibratedWhite: 0.72, alpha: 1)
+    private let footerHeight: CGFloat = 22
+    private static let badgeColor = NSColor(calibratedRed: 1.0, green: 0.78, blue: 0.35, alpha: 1)
 
     var preferredSize: NSSize {
         let rows = max(candidates.count, 1)
         let width = max(measuredWidth(), 240)
-        let height = headerHeight + CGFloat(rows) * rowHeight + 10
+        let height = headerHeight + CGFloat(rows) * rowHeight + 10 + (footer.isEmpty ? 0 : footerHeight)
         return NSSize(width: width, height: height)
     }
 
@@ -112,10 +126,18 @@ private final class CandidateView: NSView {
                 highlight.setFill()
                 hi.fill()
             }
-            let line = Self.attributedRow(index: idx + 1, candidate: cand, selected: idx == selected, glossColor: glossColor)
+            let line = Self.attributedRow(index: idx + 1, candidate: cand, badge: badge(idx), selected: idx == selected, glossColor: glossColor)
             let textRect = NSRect(x: inset, y: y + 3, width: bounds.width - inset * 2, height: rowHeight - 4)
             line.draw(with: textRect, options: [.usesLineFragmentOrigin])
             y += rowHeight
+        }
+        if !footer.isEmpty {
+            NSColor(calibratedWhite: 0.3, alpha: 0.8).setFill()
+            NSRect(x: inset, y: y + 4, width: bounds.width - inset * 2, height: 0.5).fill()
+            footerAttributed.draw(
+                with: NSRect(x: inset, y: y + 7, width: bounds.width - inset * 2, height: footerHeight - 6),
+                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine]
+            )
         }
     }
 
@@ -127,13 +149,27 @@ private final class CandidateView: NSView {
         )
         width = max(width, header.size().width + inset * 2 + 16)
         for (idx, cand) in candidates.enumerated() {
-            let line = Self.attributedRow(index: idx + 1, candidate: cand, selected: false, glossColor: glossColor)
+            let line = Self.attributedRow(index: idx + 1, candidate: cand, badge: badge(idx), selected: false, glossColor: glossColor)
             width = max(width, line.size().width + inset * 2 + 16)
+        }
+        if !footer.isEmpty {
+            width = max(width, min(footerAttributed.size().width + inset * 2 + 8, 560))
         }
         return min(width, 560)
     }
 
-    private static func attributedRow(index: Int, candidate: Candidate, selected: Bool, glossColor: NSColor) -> NSAttributedString {
+    private func badge(_ idx: Int) -> String {
+        badges.indices.contains(idx) ? badges[idx] : ""
+    }
+
+    private var footerAttributed: NSAttributedString {
+        NSAttributedString(string: footer, attributes: [
+            .font: NSFont.systemFont(ofSize: 12, weight: .regular),
+            .foregroundColor: NSColor(calibratedWhite: 0.85, alpha: 1),
+        ])
+    }
+
+    private static func attributedRow(index: Int, candidate: Candidate, badge: String, selected: Bool, glossColor: NSColor) -> NSAttributedString {
         let out = NSMutableAttributedString()
         let primary = selected ? NSColor.white : NSColor.white
         let secondary = selected ? NSColor(calibratedWhite: 0.92, alpha: 1) : glossColor
@@ -151,6 +187,15 @@ private final class CandidateView: NSView {
                 .foregroundColor: primary,
             ]
         ))
+        if !badge.isEmpty {
+            out.append(NSAttributedString(
+                string: " \(badge)",
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+                    .foregroundColor: selected ? NSColor.white : badgeColor,
+                ]
+            ))
+        }
         if !candidate.gloss.isEmpty {
             out.append(NSAttributedString(
                 string: "  \(candidate.gloss)",

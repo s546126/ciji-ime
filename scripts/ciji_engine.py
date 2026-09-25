@@ -299,6 +299,7 @@ def shorten_gloss(gloss: str, limit: int = 28) -> str:
 # --------------------------------------------------------------------------
 
 import math
+import re
 from bisect import bisect_left
 
 
@@ -332,6 +333,30 @@ PREFIX_SCAN_LIMIT = 60000
 EXTENSION_PENALTY = 2.5
 
 
+ENGLISH_MAX_PER_KEY = 12
+ENGLISH_MIN_KEYS = 3
+# At most this many English matches when the keys are also good pinyin.
+ENGLISH_LIMIT_WHEN_PINYIN = 3
+# Where English matches go when the keys also read as complete pinyin ("fan", "made").
+ENGLISH_SLOT_WHEN_PINYIN = 4
+_PAREN_RE = re.compile(r"\([^)]*\)")
+_ENGLISH_KEY_RE = re.compile(r"[a-z][a-z' -]*")
+
+
+def english_keys(gloss: str) -> List[Tuple[str, int]]:
+    """Reverse-lookup keys for a gloss: 'hello; hi' -> [('hello', 0), ('hi', 1)]."""
+    out = []
+    for i, sense in enumerate(gloss.split(";")[:3]):
+        k = _PAREN_RE.sub("", sense).strip().lower().rstrip("?!.… ").strip()
+        for prefix in ("to ", "a ", "an ", "the "):
+            if k.startswith(prefix):
+                k = k[len(prefix):]
+        k = " ".join(k.split())
+        if 2 <= len(k) <= 24 and len(k.split()) <= 3 and _ENGLISH_KEY_RE.fullmatch(k):
+            out.append((k, i))
+    return out
+
+
 class Lexicon:
     def __init__(self, entries: Sequence[LexEntry]):
         self.entries = list(entries)
@@ -346,6 +371,19 @@ class Lexicon:
             for lst in table.values():
                 lst.sort(key=lambda e: -e.freq)
             self.sorted_codes[scheme] = sorted(table)
+        self.english: dict[str, List[Tuple[float, LexEntry]]] = {}
+        for e in self.entries:
+            if not e.gloss or e.gloss.startswith("≈"):
+                continue
+            for key, sense_idx in english_keys(e.gloss):
+                score = math.log(e.freq + 1) - 0.7 * sense_idx - 0.3 * max(0, len(e.phrase) - 2)
+                self.english.setdefault(key, []).append((score, e))
+        for lst in self.english.values():
+            lst.sort(key=lambda x: -x[0])
+            del lst[ENGLISH_MAX_PER_KEY:]
+
+    def english_lookup(self, word: str, limit: int = 5) -> List[LexEntry]:
+        return [e for _, e in self.english.get(word.lower(), [])[:limit]]
 
     def logp(self, entry: LexEntry) -> float:
         return math.log(entry.freq + 1) - self.log_total
@@ -527,6 +565,24 @@ def decode(lexicon: Lexicon, scheme: str, keys: str) -> List[Candidate]:
     if n == 0 and rest:
         for e in lexicon.completions(scheme, [], rest, 60):
             add(e.phrase, e.gloss, total_keys, lexicon.logp(e), "word")
+
+    # English reverse lookup: "hello" -> 你好, "why" -> 为什么.
+    english = lexicon.english_lookup(keys.replace("'", "")) if len(keys) >= ENGLISH_MIN_KEYS else []
+    if english:
+        # Keep only confident whole-input pinyin readings ahead of the English match.
+        bar = lexicon.logp(english[0]) - 1.0
+        slot = 0
+        for c in out:
+            if slot >= ENGLISH_SLOT_WHEN_PINYIN or c.consumed != total_keys or c.score < bar:
+                break
+            slot += 1
+        extra = []
+        for e in english[: ENGLISH_LIMIT_WHEN_PINYIN if slot else len(english)]:
+            if e.phrase in seen:
+                continue
+            seen.add(e.phrase)
+            extra.append(Candidate(e.phrase, e.gloss, total_keys, seg.display, lexicon.logp(e), "english"))
+        out[slot:slot] = extra
     return out
 
 

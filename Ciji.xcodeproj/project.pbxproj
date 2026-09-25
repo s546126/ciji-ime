@@ -20,12 +20,17 @@
 		A00000000000000000000115 /* Ciji/Engine/UserHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000114 /* Ciji/Engine/UserHistory.swift */; };
 		A00000000000000000000117 /* Ciji/Translation/AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000116 /* Ciji/Translation/AppConfig.swift */; };
 		A00000000000000000000119 /* Ciji/Translation/GlossService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000118 /* Ciji/Translation/GlossService.swift */; };
-		A0000000000000000000011B /* Ciji/Resources/cedict.tsv.gz in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011A /* Ciji/Resources/cedict.tsv.gz */; };
-		A0000000000000000000011D /* Ciji/Resources/config.sample.json in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011C /* Ciji/Resources/config.sample.json */; };
-		A0000000000000000000011F /* Ciji/Resources/ciji.icns in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011E /* Ciji/Resources/ciji.icns */; };
-		A00000000000000000000121 /* Ciji/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000120 /* Ciji/Assets.xcassets */; };
-		A00000000000000000000123 /* Ciji/zh-Hans.lproj/InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000122 /* Ciji/zh-Hans.lproj/InfoPlist.strings */; };
-		A00000000000000000000125 /* Ciji/en.lproj/InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000124 /* Ciji/en.lproj/InfoPlist.strings */; };
+		A0000000000000000000011B /* Ciji/Translation/JevService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011A /* Ciji/Translation/JevService.swift */; };
+		A0000000000000000000011D /* Ciji/Translation/TranslateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011C /* Ciji/Translation/TranslateService.swift */; };
+		A0000000000000000000011F /* Ciji/Vocab/VocabBook.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000011E /* Ciji/Vocab/VocabBook.swift */; };
+		A00000000000000000000121 /* Ciji/Vocab/RelingoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000120 /* Ciji/Vocab/RelingoSync.swift */; };
+		A00000000000000000000123 /* Ciji/Vocab/Speech.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000122 /* Ciji/Vocab/Speech.swift */; };
+		A00000000000000000000125 /* Ciji/Resources/cedict.tsv.gz in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000124 /* Ciji/Resources/cedict.tsv.gz */; };
+		A00000000000000000000127 /* Ciji/Resources/config.sample.json in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000126 /* Ciji/Resources/config.sample.json */; };
+		A00000000000000000000129 /* Ciji/Resources/ciji.icns in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000128 /* Ciji/Resources/ciji.icns */; };
+		A0000000000000000000012B /* Ciji/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000012A /* Ciji/Assets.xcassets */; };
+		A0000000000000000000012D /* Ciji/zh-Hans.lproj/InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000012C /* Ciji/zh-Hans.lproj/InfoPlist.strings */; };
+		A0000000000000000000012F /* Ciji/en.lproj/InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000012E /* Ciji/en.lproj/InfoPlist.strings */; };
 		A00000000000000000000043 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000040 /* Cocoa.framework */; };
 		A00000000000000000000044 /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000041 /* InputMethodKit.framework */; };
 		A00000000000000000000045 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000042 /* libz.tbd */; };
@@ -38,25 +43,30 @@
 		A00000000000000000000040 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		A00000000000000000000041 /* InputMethodKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = InputMethodKit.framework; path = System/Library/Frameworks/InputMethodKit.framework; sourceTree = SDKROOT; };
 		A00000000000000000000042 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
-		A00000000000000000000100 /* Ciji/main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		A00000000000000000000102 /* Ciji/AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		A00000000000000000000104 /* Ciji/CijiInputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CijiInputController.swift; sourceTree = "<group>"; };
-		A00000000000000000000106 /* Ciji/InputSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSession.swift; sourceTree = "<group>"; };
-		A00000000000000000000108 /* Ciji/CandidatePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidatePanel.swift; sourceTree = "<group>"; };
-		A0000000000000000000010A /* Ciji/SelfTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfTest.swift; sourceTree = "<group>"; };
-		A0000000000000000000010C /* Ciji/Engine/Pinyin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pinyin.swift; sourceTree = "<group>"; };
-		A0000000000000000000010E /* Ciji/Engine/Xiaohe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Xiaohe.swift; sourceTree = "<group>"; };
-		A00000000000000000000110 /* Ciji/Engine/Lexicon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lexicon.swift; sourceTree = "<group>"; };
-		A00000000000000000000112 /* Ciji/Engine/Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Decoder.swift; sourceTree = "<group>"; };
-		A00000000000000000000114 /* Ciji/Engine/UserHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserHistory.swift; sourceTree = "<group>"; };
-		A00000000000000000000116 /* Ciji/Translation/AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
-		A00000000000000000000118 /* Ciji/Translation/GlossService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlossService.swift; sourceTree = "<group>"; };
-		A0000000000000000000011A /* Ciji/Resources/cedict.tsv.gz */ = {isa = PBXFileReference; lastKnownFileType = archive.gzip; path = cedict.tsv.gz; sourceTree = "<group>"; };
-		A0000000000000000000011C /* Ciji/Resources/config.sample.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = config.sample.json; sourceTree = "<group>"; };
-		A0000000000000000000011E /* Ciji/Resources/ciji.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = ciji.icns; sourceTree = "<group>"; };
-		A00000000000000000000120 /* Ciji/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A00000000000000000000122 /* Ciji/zh-Hans.lproj/InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
-		A00000000000000000000124 /* Ciji/en.lproj/InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
+		A00000000000000000000100 /* Ciji/main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "main.swift"; sourceTree = "<group>"; };
+		A00000000000000000000102 /* Ciji/AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate.swift"; sourceTree = "<group>"; };
+		A00000000000000000000104 /* Ciji/CijiInputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CijiInputController.swift"; sourceTree = "<group>"; };
+		A00000000000000000000106 /* Ciji/InputSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InputSession.swift"; sourceTree = "<group>"; };
+		A00000000000000000000108 /* Ciji/CandidatePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CandidatePanel.swift"; sourceTree = "<group>"; };
+		A0000000000000000000010A /* Ciji/SelfTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SelfTest.swift"; sourceTree = "<group>"; };
+		A0000000000000000000010C /* Ciji/Engine/Pinyin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Pinyin.swift"; sourceTree = "<group>"; };
+		A0000000000000000000010E /* Ciji/Engine/Xiaohe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Xiaohe.swift"; sourceTree = "<group>"; };
+		A00000000000000000000110 /* Ciji/Engine/Lexicon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Lexicon.swift"; sourceTree = "<group>"; };
+		A00000000000000000000112 /* Ciji/Engine/Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Decoder.swift"; sourceTree = "<group>"; };
+		A00000000000000000000114 /* Ciji/Engine/UserHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserHistory.swift"; sourceTree = "<group>"; };
+		A00000000000000000000116 /* Ciji/Translation/AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppConfig.swift"; sourceTree = "<group>"; };
+		A00000000000000000000118 /* Ciji/Translation/GlossService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlossService.swift"; sourceTree = "<group>"; };
+		A0000000000000000000011A /* Ciji/Translation/JevService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JevService.swift"; sourceTree = "<group>"; };
+		A0000000000000000000011C /* Ciji/Translation/TranslateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TranslateService.swift"; sourceTree = "<group>"; };
+		A0000000000000000000011E /* Ciji/Vocab/VocabBook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Vocab/VocabBook.swift"; sourceTree = "<group>"; };
+		A00000000000000000000120 /* Ciji/Vocab/RelingoSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Vocab/RelingoSync.swift"; sourceTree = "<group>"; };
+		A00000000000000000000122 /* Ciji/Vocab/Speech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Vocab/Speech.swift"; sourceTree = "<group>"; };
+		A00000000000000000000124 /* Ciji/Resources/cedict.tsv.gz */ = {isa = PBXFileReference; lastKnownFileType = archive.gzip; path = "cedict.tsv.gz"; sourceTree = "<group>"; };
+		A00000000000000000000126 /* Ciji/Resources/config.sample.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "config.sample.json"; sourceTree = "<group>"; };
+		A00000000000000000000128 /* Ciji/Resources/ciji.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = "ciji.icns"; sourceTree = "<group>"; };
+		A0000000000000000000012A /* Ciji/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
+		A0000000000000000000012C /* Ciji/zh-Hans.lproj/InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = "InfoPlist.strings"; sourceTree = "<group>"; };
+		A0000000000000000000012E /* Ciji/en.lproj/InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = "InfoPlist.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,7 +113,7 @@
 				A00000000000000000000007 /* Resources */,
 				A00000000000000000000008 /* zh-Hans.lproj */,
 				A00000000000000000000009 /* en.lproj */,
-				A00000000000000000000120 /* Assets.xcassets */,
+				A0000000000000000000012A /* Assets.xcassets */,
 				A00000000000000000000031 /* Info.plist */,
 				A00000000000000000000032 /* Ciji.entitlements */,
 			);
@@ -127,6 +137,11 @@
 			children = (
 				A00000000000000000000116 /* AppConfig.swift */,
 				A00000000000000000000118 /* GlossService.swift */,
+				A0000000000000000000011A /* JevService.swift */,
+				A0000000000000000000011C /* TranslateService.swift */,
+				A0000000000000000000011E /* VocabBook.swift */,
+				A00000000000000000000120 /* RelingoSync.swift */,
+				A00000000000000000000122 /* Speech.swift */,
 			);
 			path = Translation;
 			sourceTree = "<group>";
@@ -134,9 +149,9 @@
 		A00000000000000000000007 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				A0000000000000000000011A /* cedict.tsv.gz */,
-				A0000000000000000000011C /* config.sample.json */,
-				A0000000000000000000011E /* ciji.icns */,
+				A00000000000000000000124 /* cedict.tsv.gz */,
+				A00000000000000000000126 /* config.sample.json */,
+				A00000000000000000000128 /* ciji.icns */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -144,7 +159,7 @@
 		A00000000000000000000008 /* zh-Hans.lproj */ = {
 			isa = PBXGroup;
 			children = (
-				A00000000000000000000122 /* InfoPlist.strings */,
+				A0000000000000000000012C /* InfoPlist.strings */,
 			);
 			path = "zh-Hans.lproj";
 			sourceTree = "<group>";
@@ -152,7 +167,7 @@
 		A00000000000000000000009 /* en.lproj */ = {
 			isa = PBXGroup;
 			children = (
-				A00000000000000000000124 /* InfoPlist.strings */,
+				A0000000000000000000012E /* InfoPlist.strings */,
 			);
 			path = en.lproj;
 			sourceTree = "<group>";
@@ -211,12 +226,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A0000000000000000000011B /* Ciji/Resources/cedict.tsv.gz in Resources */,
-				A0000000000000000000011D /* Ciji/Resources/config.sample.json in Resources */,
-				A0000000000000000000011F /* Ciji/Resources/ciji.icns in Resources */,
-				A00000000000000000000121 /* Ciji/Assets.xcassets in Resources */,
-				A00000000000000000000123 /* Ciji/zh-Hans.lproj/InfoPlist.strings in Resources */,
-				A00000000000000000000125 /* Ciji/en.lproj/InfoPlist.strings in Resources */,
+				A00000000000000000000125 /* Ciji/Resources/cedict.tsv.gz in Resources */,
+				A00000000000000000000127 /* Ciji/Resources/config.sample.json in Resources */,
+				A00000000000000000000129 /* Ciji/Resources/ciji.icns in Resources */,
+				A0000000000000000000012B /* Ciji/Assets.xcassets in Resources */,
+				A0000000000000000000012D /* Ciji/zh-Hans.lproj/InfoPlist.strings in Resources */,
+				A0000000000000000000012F /* Ciji/en.lproj/InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,6 +255,11 @@
 				A00000000000000000000115 /* Ciji/Engine/UserHistory.swift in Sources */,
 				A00000000000000000000117 /* Ciji/Translation/AppConfig.swift in Sources */,
 				A00000000000000000000119 /* Ciji/Translation/GlossService.swift in Sources */,
+				A0000000000000000000011B /* Ciji/Translation/JevService.swift in Sources */,
+				A0000000000000000000011D /* Ciji/Translation/TranslateService.swift in Sources */,
+				A0000000000000000000011F /* Ciji/Vocab/VocabBook.swift in Sources */,
+				A00000000000000000000121 /* Ciji/Vocab/RelingoSync.swift in Sources */,
+				A00000000000000000000123 /* Ciji/Vocab/Speech.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

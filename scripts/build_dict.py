@@ -204,8 +204,9 @@ def build(min_essay_only: int = ESSAY_ONLY_MIN) -> list[tuple[str, tuple[str, ..
     text = gzip.decompress(fetch_cedict()).decode("utf-8")
 
     rows: dict[tuple[str, tuple[str, ...]], Row] = {}
-    t2s: dict[str, str] = {}
-    seen_trad: set[tuple[str, str, tuple[str, ...]]] = set()
+    word_t2s: dict[str, str] = {}  # CEDICT traditional word -> simplified word
+    char_t2s: dict[str, str] = {}  # traditional/variant char -> simplified char
+    variant_t2s: dict[str, str] = {}
 
     for line in text.splitlines():
         if not line or line.startswith("#"):
@@ -216,13 +217,14 @@ def build(min_essay_only: int = ESSAY_ONLY_MIN) -> list[tuple[str, tuple[str, ..
         trad, simp, gloss = m.group("trad"), m.group("simp"), m.group("gloss")
         if not HAN_RE.match(simp):
             continue
+        meta = is_meta_only(gloss)
+        word_t2s.setdefault(trad, simp)
+        if len(trad) == 1 and len(simp) == 1:
+            (variant_t2s if meta else char_t2s).setdefault(trad, simp)
         syllables = tuple(normalize_syllable(s) for s in m.group("pinyin").split())
         if len(syllables) != len(simp) or any(s not in VALID_SYLLABLES for s in syllables):
             continue
-        if len(simp) == 1 and len(trad) == 1 and trad != simp:
-            t2s.setdefault(trad, simp)
         row = rows.setdefault((simp, syllables), Row(simp, syllables))
-        meta = is_meta_only(gloss)
         senses = gloss_senses(gloss)
         # Real senses first; a "variant of" entry never pushes out a real meaning.
         if not meta and row.meta_only:
@@ -230,21 +232,27 @@ def build(min_essay_only: int = ESSAY_ONLY_MIN) -> list[tuple[str, tuple[str, ..
             row.meta_only = False
         else:
             row.senses.extend(senses)
+    for k, v in variant_t2s.items():
+        char_t2s.setdefault(k, v)
 
-        key = (trad, simp, syllables)
-        if key in seen_trad:
-            continue
-        seen_trad.add(key)
-        count = essay.get(trad, 0)
-        if trad != simp and count == 0:
-            count = essay.get(simp, 0)
-        if meta:
+    # rime-essay is traditional and uses variants (爲 for 為, 喫 for 吃, 裏 for 裡):
+    # fold every essay word onto its simplified form and sum the counts.
+    def to_simp(word: str) -> str:
+        return word_t2s.get(word) or "".join(char_t2s.get(ch, ch) for ch in word)
+
+    simp_count: dict[str, int] = defaultdict(int)
+    for word, count in essay.items():
+        simp_count[to_simp(word)] += count
+
+    for row in rows.values():
+        count = float(simp_count.get(row.phrase, 0))
+        if row.meta_only:
             count *= 0.02
-        if len(simp) == 1:
-            shares = dict(luna.get(trad, []) or luna.get(simp, []))
+        if len(row.phrase) == 1:
+            shares = dict(luna.get(row.phrase, []))
             if shares:
-                count *= shares.get(syllables[0], 0.002)
-        row.freq += count
+                count *= shares.get(row.syllables[0], 0.002)
+        row.freq = count
 
     # Essay words that CC-CEDICT does not have (common collocations like 我是).
     by_phrase: dict[str, list[Row]] = defaultdict(list)
@@ -281,15 +289,14 @@ def build(min_essay_only: int = ESSAY_ONLY_MIN) -> list[tuple[str, tuple[str, ..
         return "≈ " + " + ".join(parts)
 
     added = 0
-    for word, count in essay.items():
-        if count < min_essay_only or not 2 <= len(word) <= 5:
+    for simp, count in simp_count.items():
+        if count < min_essay_only or not 2 <= len(simp) <= 5:
             continue
-        simp = "".join(t2s.get(ch, ch) for ch in word)
         if not HAN_RE.match(simp) or simp in by_phrase:
             continue
         options = []
-        for ch in word:
-            readings = luna.get(ch) or luna.get(t2s.get(ch, ch))
+        for ch in simp:
+            readings = luna.get(ch)
             if not readings:
                 break
             top = [r for r in readings if r[1] >= 0.3][:2] or readings[:1]

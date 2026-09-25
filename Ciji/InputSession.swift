@@ -40,6 +40,10 @@ final class InputSession {
     private var scheme: Scheme = AppConfig.load().preferredScheme
     private var glossToken: UInt64 = 0
     private var shiftTapPending = false
+    /// Ctrl+T result for the highlighted candidate: (phrase, English, fromAI).
+    private var translation: (phrase: String, text: String, ai: Bool)?
+    /// One-line message in the panel footer (e.g. "已加入生词本").
+    private var notice: String?
 
     private static let punct: [String: String] = [
         ",": "，",
@@ -72,9 +76,12 @@ final class InputSession {
     func activate() {
         AppConfig.ensureSupportFiles()
         scheme = AppConfig.load().preferredScheme
+        UserHistory.shared.clearText()
+        RelingoSync.shared.pull()
     }
 
     func deactivate() {
+        JevService.shared.cancel()
         clear(client: nil)
         CandidatePanel.shared.hide()
         UserHistory.shared.resetContext()
@@ -96,6 +103,10 @@ final class InputSession {
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if mods.contains(.control), mods.contains(.shift), event.charactersIgnoringModifiers?.lowercased() == "p" {
             toggleScheme(client: client)
+            return true
+        }
+        if mods.contains(.control), !keys.isEmpty, !asciiMode,
+           handleComposingShortcut(event.charactersIgnoringModifiers?.lowercased() ?? "", keyCode: event.keyCode, client: client) {
             return true
         }
         if mods.contains(.command) || mods.contains(.control) || mods.contains(.option) {
@@ -201,6 +212,7 @@ final class InputSession {
             }
             insert(mapped, client: client)
             UserHistory.shared.resetContext()
+            UserHistory.shared.appendText(mapped)
             return true
         }
 
@@ -217,26 +229,7 @@ final class InputSession {
     }
 
     func menu() -> NSMenu {
-        let menu = NSMenu(title: "词记")
-        menu.autoenablesItems = false
-        let target = NSApp.delegate
-        let xiaohe = NSMenuItem(title: "小鹤双拼", action: #selector(AppDelegate.selectXiaohe(_:)), keyEquivalent: "")
-        xiaohe.state = scheme == .xiaohe ? .on : .off
-        xiaohe.target = target
-        let quanpin = NSMenuItem(title: "全拼", action: #selector(AppDelegate.selectQuanpin(_:)), keyEquivalent: "")
-        quanpin.state = scheme == .quanpin ? .on : .off
-        quanpin.target = target
-        let ascii = NSMenuItem(title: "英文 ASCII", action: #selector(AppDelegate.toggleASCII(_:)), keyEquivalent: "")
-        ascii.state = asciiMode ? .on : .off
-        ascii.target = target
-        let config = NSMenuItem(title: "打开配置文件夹", action: #selector(AppDelegate.openConfig(_:)), keyEquivalent: "")
-        config.target = target
-        menu.addItem(xiaohe)
-        menu.addItem(quanpin)
-        menu.addItem(ascii)
-        menu.addItem(.separator())
-        menu.addItem(config)
-        return menu
+        (NSApp.delegate as? AppDelegate)?.makeMenu() ?? NSMenu(title: "词记")
     }
 
     func setScheme(_ newScheme: Scheme, client: IMKTextInput?) {
@@ -292,6 +285,60 @@ final class InputSession {
         return false
     }
 
+    /// Ctrl shortcuts while composing: S 生词本, R 朗读, T 翻译 (again: commit English), ` Jev now.
+    private func handleComposingShortcut(_ key: String, keyCode: UInt16, client: IMKTextInput?) -> Bool {
+        let visible = visibleCandidates()
+        guard !visible.isEmpty else { return false }
+        let current = visible[min(selected, visible.count - 1)]
+        switch key {
+        case "s":
+            let added = VocabBook.shared.toggle(current)
+            notice = added ? "★ 已加入生词本：\(current.phrase)" : "已从生词本移除：\(current.phrase)"
+            if added, let word = RelingoSync.headword(current.gloss) {
+                RelingoSync.shared.push([word]) { [weak self] status in
+                    guard let self, !self.keys.isEmpty else { return }
+                    self.notice = "★ \(current.phrase) · \(status)"
+                    self.render(client: nil)
+                }
+            }
+            render(client: client)
+            return true
+        case "r":
+            if let t = translation, t.phrase == current.phrase {
+                Speech.shared.speak(t.text)
+            } else {
+                Speech.shared.speak(Speech.headword(current.gloss))
+            }
+            return true
+        case "t":
+            if let t = translation, t.phrase == current.phrase {
+                // Second Ctrl+T commits the English instead of the Chinese.
+                insert(t.text, client: client)
+                clear(client: client)
+                UserHistory.shared.resetContext()
+                return true
+            }
+            let phrase = current.phrase
+            let fallback = current.gloss.isEmpty ? phrase : current.gloss
+            notice = "翻译中…"
+            render(client: client)
+            let snapshotKeys = keys
+            TranslateService.shared.translate(phrase, fallback: fallback) { [weak self] text, ai in
+                guard let self, self.keys == snapshotKeys else { return }
+                self.translation = (phrase, text, ai)
+                self.notice = nil
+                self.render(client: nil)
+            }
+            return true
+        default:
+            if keyCode == 50 { // ` (grave): ask Jev right now
+                scheduleJev(client: client, immediate: true)
+                return true
+            }
+            return false
+        }
+    }
+
     private func moveSelection(_ delta: Int, client: IMKTextInput?) {
         let count = visibleCandidates().count
         guard count > 0 else { return }
@@ -337,12 +384,67 @@ final class InputSession {
             return
         }
         candidates = InputDecoder.decode(keys: keys, scheme: scheme)
+        translation = nil
+        notice = nil
         if page * pageSize >= max(candidates.count, 1) {
             page = 0
         }
         selected = min(selected, max(visibleCandidates().count - 1, 0))
         render(client: client)
         requestGlosses()
+        scheduleJev(client: client, immediate: false)
+    }
+
+    /// Ask Jev to reorder the top candidates using the text before the cursor.
+    private func scheduleJev(client: IMKTextInput?, immediate: Bool) {
+        let config = AppConfig.load()
+        guard page == 0, selected == 0 else { return }
+        let top = Array(candidates.prefix(max(2, config.jev.candidates)))
+        guard top.count >= 2 else { return }
+        let phrases = top.map(\.phrase)
+        let context = contextBeforeCursor(client: client)
+        let snapshotKeys = keys
+        JevService.shared.rerank(
+            context: context, input: keys, phrases: phrases, config: config, immediate: immediate
+        ) { [weak self] order in
+            guard let self, self.keys == snapshotKeys, self.page == 0, self.selected == 0 else { return }
+            self.applyJev(order: order, count: top.count)
+            self.render(client: nil)
+        }
+    }
+
+    private func applyJev(order: [String], count: Int) {
+        let head = Array(candidates.prefix(count))
+        guard head.count == count else { return }
+        var reordered: [Candidate] = []
+        for phrase in order {
+            if var c = head.first(where: { $0.phrase == phrase }) {
+                c.jev = false
+                reordered.append(c)
+            }
+        }
+        for c in head where !reordered.contains(where: { $0.phrase == c.phrase }) {
+            reordered.append(c)
+        }
+        reordered[0].jev = true
+        candidates.replaceSubrange(0..<count, with: reordered)
+    }
+
+    /// Up to 40 characters before the insertion point (falls back to what we committed).
+    private func contextBeforeCursor(client: IMKTextInput?) -> String {
+        if let client {
+            let marked = client.markedRange()
+            let selection = client.selectedRange()
+            let cursor = marked.location != NSNotFound ? marked.location : selection.location
+            if cursor != NSNotFound, cursor > 0 {
+                let start = max(0, cursor - 40)
+                if let text = client.attributedSubstring(from: NSRange(location: start, length: cursor - start))?.string,
+                   !text.isEmpty {
+                    return text
+                }
+            }
+        }
+        return UserHistory.shared.recentText
     }
 
     private func render(client: IMKTextInput?) {
@@ -356,6 +458,8 @@ final class InputSession {
         CandidatePanel.shared.update(
             segmented: segmented,
             candidates: visible,
+            badges: visible.map(badges(for:)),
+            footer: footerText(visible: visible),
             selected: selected,
             page: page,
             pageSize: pageSize
@@ -367,6 +471,32 @@ final class InputSession {
         } else if !CandidatePanel.shared.isVisible {
             CandidatePanel.shared.show(near: NSRect(x: 80, y: 80, width: 1, height: 18))
         }
+    }
+
+    /// ✦ Jev pick · 复习 due in 生词本 · ★ in 生词本 · R in your Relingo list.
+    private func badges(for candidate: Candidate) -> String {
+        var marks: [String] = []
+        if candidate.jev { marks.append("✦") }
+        if VocabBook.shared.isDue(candidate.phrase) {
+            marks.append("复习")
+        } else if VocabBook.shared.contains(candidate.phrase) {
+            marks.append("★")
+        }
+        if RelingoSync.shared.matches(candidate.gloss) { marks.append("R") }
+        return marks.joined(separator: " ")
+    }
+
+    private func footerText(visible: [Candidate]) -> String? {
+        if let notice { return notice }
+        if let t = translation, visible.indices.contains(selected), visible[selected].phrase == t.phrase {
+            return (t.ai ? "EN: " : "EN≈ ") + t.text + "   ⌃T 上屏英文 · ⌃R 朗读"
+        }
+        let due = VocabBook.shared.dueItems
+        if let item = due.first(where: { d in !visible.contains { $0.phrase == d.phrase } }) ?? due.first {
+            let head = Speech.headword(item.gloss)
+            return "📖 待复习 \(due.count)：\(item.phrase) \(item.pinyin) — \(head)"
+        }
+        return nil
     }
 
     private func requestGlosses() {
@@ -414,6 +544,7 @@ final class InputSession {
         let chosen = visible[idx]
         insert(chosen.phrase, client: client)
         UserHistory.shared.record(chosen)
+        VocabBook.shared.committed(chosen.phrase)
         var remaining = chosen.consumed > 0 ? String(keys.dropFirst(chosen.consumed)) : ""
         while remaining.hasPrefix("'") { remaining.removeFirst() }
         if !remaining.isEmpty {

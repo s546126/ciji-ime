@@ -19,6 +19,8 @@ final class UserHistory {
     private var saveScheduled = false
     /// Last committed phrase, used as context for the next lookup.
     private(set) var previous: String?
+    /// Recently committed text (≤ 40 chars): Jev context when the app can't tell us.
+    private(set) var recentText = ""
 
     private init() {
         if let data = try? Data(contentsOf: Self.url()),
@@ -54,6 +56,14 @@ final class UserHistory {
         previous = nil
     }
 
+    func appendText(_ text: String) {
+        recentText = String((recentText + text).suffix(40))
+    }
+
+    func clearText() {
+        recentText = ""
+    }
+
     func record(_ candidate: Candidate, lexicon: Lexicon = .shared) {
         let phrase = candidate.phrase
         guard !phrase.isEmpty else { return }
@@ -68,6 +78,7 @@ final class UserHistory {
             store.bigrams[prev, default: [:]][phrase, default: 0] += 1
         }
         previous = phrase
+        appendText(phrase)
         trim()
         scheduleSave()
     }
